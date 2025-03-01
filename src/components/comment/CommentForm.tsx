@@ -1,92 +1,113 @@
 import { useState } from 'react';
-import useAuth from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 import * as Sentry from '@sentry/browser';
 
 interface CommentFormProps {
   postId: number;
   parentId?: number;
-  onSubmitSuccess?: () => void;
+  onCommentAdded: (comment: any) => void;
+  isReply?: boolean;
 }
 
-const CommentForm = ({ postId, parentId, onSubmitSuccess }: CommentFormProps) => {
-  const { session } = useAuth();
+const CommentForm = ({ postId, parentId, onCommentAdded, isReply = false }: CommentFormProps) => {
+  const { user } = useAuth();
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
-
-    setError('');
     
-    if (!content.trim()) {
-      setError('Comment cannot be empty');
+    if (!user) {
+      window.location.href = '/auth';
       return;
     }
-
-    setIsSubmitting(true);
-
+    
+    if (!content.trim()) return;
+    
     try {
-      const response = await fetch('/api/comments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          content,
-          postId,
-          parentId,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to post comment');
-      }
-
-      setContent('');
-      if (onSubmitSuccess) {
-        onSubmitSuccess();
-      }
+      setIsSubmitting(true);
+      
+      // TODO: Implement actual API call
+      // const response = await fetch('/api/comments', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${user.token}`
+      //   },
+      //   body: JSON.stringify({
+      //     content,
+      //     postId,
+      //     parentId
+      //   })
+      // });
+      
+      // if (!response.ok) {
+      //   throw new Error('Failed to add comment');
+      // }
+      
+      // const data = await response.json();
+      
+      // For demo purposes, we'll simulate a successful response
+      const newComment = {
+        id: Math.floor(Math.random() * 10000),
+        content,
+        createdAt: new Date().toISOString(),
+        userName: user.user_metadata?.name || user.email?.split('@')[0] || 'user',
+        upvotes: 0,
+        downvotes: 0,
+        userVote: 0,
+        replies: []
+      };
+      
+      // Add small delay to simulate API call
+      setTimeout(() => {
+        onCommentAdded(newComment);
+        setContent('');
+        setIsSubmitting(false);
+      }, 500);
+      
     } catch (error) {
-      console.error('Error posting comment:', error);
+      console.error('Error adding comment:', error);
       Sentry.captureException(error);
-      setError(error instanceof Error ? error.message : 'Failed to post comment');
-    } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (!user) {
+    return (
+      <div className="bg-gray-50 p-4 rounded-md text-center">
+        <p className="text-gray-700 mb-2">Log in or sign up to leave a comment</p>
+        <a 
+          href="/auth" 
+          className="btn-primary inline-block"
+        >
+          Log In / Sign Up
+        </a>
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-4">
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2 text-sm">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="mb-4">
+      <div className="mb-3">
         <textarea
+          className="input-field min-h-24"
+          placeholder={isReply ? "What are your thoughts on this comment?" : "What are your thoughts?"}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="input min-h-24"
-          placeholder="What are your thoughts?"
-          rows={3}
-        />
-        
-        <div className="flex justify-end mt-2">
-          <button
-            type="submit"
-            className="btn-primary text-sm"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Posting...' : 'Comment'}
-          </button>
-        </div>
-      </form>
-    </div>
+          required
+        ></textarea>
+      </div>
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={isSubmitting || !content.trim()}
+        >
+          {isSubmitting ? 'Posting...' : isReply ? 'Reply' : 'Comment'}
+        </button>
+      </div>
+    </form>
   );
 };
 

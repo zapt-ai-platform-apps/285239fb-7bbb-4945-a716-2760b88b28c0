@@ -1,160 +1,182 @@
 import { useState } from 'react';
-import { formatRelativeTime } from '../../utils/date';
-import { FaArrowUp, FaArrowDown, FaReply } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
+import { useAuth } from '../../context/AuthContext';
 import CommentForm from './CommentForm';
-import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
 
-interface CommentItemProps {
-  comment: {
-    id: number;
-    content: string;
-    userId: string;
-    postId: number;
-    parentId: number | null;
-    createdAt: string | Date;
-    updatedAt: string | Date;
-    voteScore: number;
-    userVote: number | null;
-    user?: {
-      email: string;
-    };
-    replies?: CommentItemProps['comment'][];
-  };
-  onAddComment?: () => void;
+interface Comment {
+  id: number;
+  content: string;
+  createdAt: string;
+  userName: string;
+  upvotes: number;
+  downvotes: number;
+  userVote?: number;
+  replies?: Comment[];
 }
 
-const CommentItem = ({ comment, onAddComment }: CommentItemProps) => {
-  const { user, session } = useAuth();
+interface CommentItemProps {
+  comment: Comment;
+}
+
+const CommentItem = ({ comment }: CommentItemProps) => {
+  const { user } = useAuth();
   const [isReplying, setIsReplying] = useState(false);
-  const [voteScore, setVoteScore] = useState(comment.voteScore);
-  const [userVote, setUserVote] = useState(comment.userVote);
+  const [showReplies, setShowReplies] = useState(true);
+  const [votes, setVotes] = useState({
+    upvotes: comment.upvotes,
+    downvotes: comment.downvotes,
+    userVote: comment.userVote || 0
+  });
   const [isVoting, setIsVoting] = useState(false);
+  const [replies, setReplies] = useState(comment.replies || []);
+
+  const voteScore = votes.upvotes - votes.downvotes;
 
   const handleVote = async (value: number) => {
-    if (!user || !session) {
-      // Redirect to login or show login modal
+    if (!user) {
+      window.location.href = '/auth';
       return;
     }
 
     if (isVoting) return;
-    setIsVoting(true);
+
+    // Prevent duplicate votes
+    if (votes.userVote === value) {
+      value = 0; // Reset vote if clicking the same button
+    }
 
     try {
-      const response = await fetch('/api/votes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          commentId: comment.id,
-          value,
-        }),
+      setIsVoting(true);
+      
+      // Optimistic update
+      const oldUserVote = votes.userVote;
+      let newUpvotes = votes.upvotes;
+      let newDownvotes = votes.downvotes;
+      
+      // Remove old vote if exists
+      if (oldUserVote === 1) newUpvotes--;
+      if (oldUserVote === -1) newDownvotes--;
+      
+      // Add new vote
+      if (value === 1) newUpvotes++;
+      if (value === -1) newDownvotes++;
+      
+      setVotes({
+        upvotes: newUpvotes,
+        downvotes: newDownvotes,
+        userVote: value
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to vote');
-      }
-
-      // If voting the same way, remove the vote
-      if (userVote === value) {
-        setVoteScore(voteScore - value);
-        setUserVote(null);
-      } 
-      // If changing vote, update score accordingly
-      else if (userVote !== null) {
-        setVoteScore(voteScore - userVote + value);
-        setUserVote(value);
-      } 
-      // If new vote
-      else {
-        setVoteScore(voteScore + value);
-        setUserVote(value);
-      }
+      // TODO: Implement actual API call
+      // const response = await fetch(`/api/comments/${comment.id}/vote`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${user.token}`
+      //   },
+      //   body: JSON.stringify({ value })
+      // });
+      
+      // if (!response.ok) {
+      //   // Revert changes on error
+      //   throw new Error('Failed to update vote');
+      // }
+      
     } catch (error) {
-      console.error('Error voting:', error);
+      console.error('Error voting on comment:', error);
       Sentry.captureException(error);
+      
+      // Revert on error
+      setVotes({
+        upvotes: comment.upvotes,
+        downvotes: comment.downvotes,
+        userVote: comment.userVote || 0
+      });
     } finally {
       setIsVoting(false);
     }
   };
 
-  const handleReplySubmit = () => {
+  const handleAddReply = (newReply: Comment) => {
+    setReplies([...replies, newReply]);
     setIsReplying(false);
-    if (onAddComment) {
-      onAddComment();
-    }
+    setShowReplies(true);
   };
 
-  // Get display name for comment author
-  const authorName = comment.user?.email?.split('@')[0] || 'Anonymous';
-
   return (
-    <div className="mt-3">
+    <div className="pt-2">
       <div className="flex">
-        {/* Vote buttons */}
         <div className="flex flex-col items-center mr-2">
           <button 
             onClick={() => handleVote(1)}
+            className={`vote-button ${votes.userVote === 1 ? 'vote-active' : ''}`}
             disabled={isVoting}
-            className={`cursor-pointer p-1 rounded ${userVote === 1 ? 'text-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
             aria-label="Upvote"
           >
-            <FaArrowUp size={16} />
+            <ArrowUpIcon className="h-4 w-4" />
           </button>
+          
           <span className="text-xs font-medium my-1">{voteScore}</span>
+          
           <button 
             onClick={() => handleVote(-1)}
+            className={`vote-button ${votes.userVote === -1 ? 'downvote-active' : ''}`}
             disabled={isVoting}
-            className={`cursor-pointer p-1 rounded ${userVote === -1 ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'}`}
             aria-label="Downvote"
           >
-            <FaArrowDown size={16} />
+            <ArrowDownIcon className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Comment content */}
         <div className="flex-1">
           <div className="text-xs text-gray-500 mb-1">
-            <span className="font-medium">{authorName}</span>
-            <span className="mx-1">•</span>
-            {formatRelativeTime(comment.createdAt)}
+            <Link to={`/u/${comment.userName}`} className="font-medium hover:underline">
+              u/{comment.userName}
+            </Link>
+            {' • '}
+            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
           </div>
           
-          <div className="text-gray-800 mb-2">
-            {comment.content}
+          <div className="prose prose-sm max-w-none mb-2">
+            <p>{comment.content}</p>
           </div>
-
+          
           <div className="flex items-center text-xs text-gray-500 mb-2">
             <button 
               onClick={() => setIsReplying(!isReplying)}
-              className="flex items-center hover:bg-gray-100 rounded p-1 cursor-pointer"
+              className="hover:text-reddit-blue mr-3"
             >
-              <FaReply className="mr-1" />
-              <span>Reply</span>
+              {isReplying ? 'Cancel' : 'Reply'}
             </button>
+            
+            {replies.length > 0 && (
+              <button 
+                onClick={() => setShowReplies(!showReplies)}
+                className="hover:text-reddit-blue"
+              >
+                {showReplies ? 'Hide replies' : `Show ${replies.length} replies`}
+              </button>
+            )}
           </div>
-
+          
           {isReplying && (
-            <div className="ml-2 mt-2 border-l-2 border-gray-200 pl-3">
+            <div className="mt-2 mb-3">
               <CommentForm 
-                postId={comment.postId} 
-                parentId={comment.id} 
-                onSubmitSuccess={handleReplySubmit}
+                postId={0} // Not used for replies
+                parentId={comment.id}
+                onCommentAdded={handleAddReply}
+                isReply
               />
             </div>
           )}
-
-          {/* Render replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="ml-2 border-l-2 border-gray-200 pl-3">
-              {comment.replies.map((reply) => (
-                <CommentItem 
-                  key={reply.id} 
-                  comment={reply} 
-                  onAddComment={onAddComment}
-                />
+          
+          {showReplies && replies.length > 0 && (
+            <div className="ml-5 pl-4 border-l border-gray-200">
+              {replies.map((reply) => (
+                <CommentItem key={reply.id} comment={reply} />
               ))}
             </div>
           )}

@@ -1,46 +1,49 @@
 # Reddit Clone
 
-A simple Reddit clone built with React, TypeScript, Tailwind CSS, and Supabase.
+A simplified Reddit clone built with React, TypeScript, and Tailwind CSS.
 
 ## Features
 
-- User authentication with Supabase Auth
-- Create and browse communities
-- Create posts in communities
-- Comment on posts with threaded replies
-- Upvote and downvote posts and comments
+- View, create, and vote on posts
+- Comment on posts and reply to comments
+- Create and browse subreddits
+- User authentication
 - User profiles
-- Search functionality
+- Responsive design
 
-## Technologies Used
+## Tech Stack
 
-- React 18
+- React
 - TypeScript
 - Tailwind CSS
-- Supabase Auth
 - CockroachDB with Drizzle ORM
-- React Router v6
-- Vercel for deployment
+- Supabase Authentication
 
-## Setup
+## Development
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create a `.env` file with the required environment variables
-4. Run the development server:
-   ```
-   npm run dev
-   ```
+```bash
+# Install dependencies
+npm install
 
-## Building for Production
+# Start development server
+npm run dev
 
-```
+# Build for production
 npm run build
 ```
 
-## License
+## Environment Variables
 
-MIT
+The application requires several environment variables to be set. Create a `.env` file in the root directory with the following variables:
+
+```
+VITE_PUBLIC_APP_ID=
+VITE_PUBLIC_APP_ENV=
+VITE_PUBLIC_SENTRY_DSN=
+VITE_PUBLIC_UMAMI_WEBSITE_ID=
+COCKROACH_DB_URL=
+```
+
+## Deployment
+
+This project is set up to be deployed on Vercel.

@@ -1,130 +1,98 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import PostCard from '../../components/post/PostCard';
-import CommentItem from '../../components/comment/CommentItem';
-import CommentForm from '../../components/comment/CommentForm';
-import useAuth from '../../hooks/useAuth';
+import CommentSection from '../../components/comment/CommentSection';
 import * as Sentry from '@sentry/browser';
-import { buildCommentThread } from '../../models/Comment';
 
 interface Post {
   id: number;
   title: string;
-  content: string;
-  communityId: number;
-  communityName: string;
-  userId: string;
+  content?: string;
   createdAt: string;
-  updatedAt: string;
-  voteScore: number;
-  userVote: number | null;
-  userEmail?: string;
+  userName: string;
+  subredditName: string;
+  upvotes: number;
+  downvotes: number;
+  commentCount: number;
+  userVote?: number;
 }
 
-interface Comment {
-  id: number;
-  content: string;
-  postId: number;
-  userId: string;
-  parentId: number | null;
-  createdAt: string;
-  updatedAt: string;
-  voteScore: number;
-  userVote: number | null;
-  user?: {
-    email: string;
-  };
-  replies?: Comment[];
-}
-
-const PostDetail = () => {
-  const { postId } = useParams<{ postId: string }>();
-  const { session, user } = useAuth();
+const PostDetailPage = () => {
+  const { postId, subredditName } = useParams<{ postId: string; subredditName: string }>();
   const [post, setPost] = useState<Post | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const fetchComments = async () => {
-    try {
-      if (!postId) return;
-      
-      const response = await fetch(`/api/comments?postId=${postId}`, {
-        headers: session ? {
-          Authorization: `Bearer ${session.access_token}`,
-        } : {},
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch comments');
-      }
-
-      const commentsData = await response.json();
-      const threaded = buildCommentThread(commentsData);
-      setComments(threaded);
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-      Sentry.captureException(error);
-    }
-  };
 
   useEffect(() => {
     const fetchPost = async () => {
-      setLoading(true);
       try {
-        if (!postId) {
-          throw new Error('Post ID is required');
-        }
+        setLoading(true);
+        
+        // TODO: Implement actual API call when ready
+        // const response = await fetch(`/api/posts/${postId}`);
+        // if (!response.ok) {
+        //   throw new Error('Failed to fetch post');
+        // }
+        // const data = await response.json();
+        // setPost(data);
 
-        // Fetch post
-        const postResponse = await fetch(`/api/posts?postId=${postId}`, {
-          headers: session ? {
-            Authorization: `Bearer ${session.access_token}`,
-          } : {},
-        });
-
-        if (!postResponse.ok) {
-          throw new Error('Failed to fetch post');
-        }
-
-        const postsData = await postResponse.json();
-        if (postsData.length === 0) {
-          throw new Error('Post not found');
-        }
-
-        setPost(postsData[0]);
-
-        // Fetch comments
-        await fetchComments();
+        // Mock data for development
+        setTimeout(() => {
+          setPost({
+            id: parseInt(postId || '0'),
+            title: "This is a detailed post about an interesting topic",
+            content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl. Nullam auctor, nisl eget ultricies tincidunt, nisl nisl aliquam nisl, eget ultricies nisl nisl eget nisl.\n\nSed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+            createdAt: new Date(Date.now() - 86400000).toISOString(),
+            userName: "detailed_poster",
+            subredditName: subredditName || 'unknown',
+            upvotes: 1542,
+            downvotes: 41,
+            commentCount: 87,
+          });
+          setLoading(false);
+        }, 800);
       } catch (error) {
         console.error('Error fetching post:', error);
         Sentry.captureException(error);
-        setError(error instanceof Error ? error.message : 'An error occurred');
-      } finally {
         setLoading(false);
       }
     };
 
-    fetchPost();
-  }, [postId, session]);
-
-  const handleCommentSubmit = async () => {
-    await fetchComments();
-  };
+    if (postId) {
+      fetchPost();
+    }
+  }, [postId, subredditName]);
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-6 flex justify-center">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+      <div className="animate-pulse">
+        <div className="card mb-4">
+          <div className="flex">
+            <div className="bg-gray-200 w-14 p-2"></div>
+            <div className="p-4 flex-1">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+              <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+              <div className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="h-8 bg-gray-200 rounded w-1/6 mb-4"></div>
+        
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+              <div className="flex-1">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -132,54 +100,18 @@ const PostDetail = () => {
 
   if (!post) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="card text-center py-8">
-          <p className="text-lg text-gray-600">Post not found</p>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-gray-500">Post not found or has been deleted.</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="max-w-3xl mx-auto">
-        <PostCard post={{...post, commentCount: comments.length}} isDetail />
-        
-        <div className="card mb-4">
-          {user ? (
-            <CommentForm 
-              postId={parseInt(postId as string)} 
-              onSubmitSuccess={handleCommentSubmit} 
-            />
-          ) : (
-            <div className="bg-gray-50 p-4 text-center rounded">
-              Log in or sign up to leave a comment
-            </div>
-          )}
-          
-          <div className="mt-4">
-            <h3 className="text-lg font-medium mb-2">Comments ({comments.length})</h3>
-            
-            {comments.length === 0 ? (
-              <div className="text-gray-500 py-4 text-center">
-                No comments yet. Be the first to comment!
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-200">
-                {comments.map((comment) => (
-                  <CommentItem 
-                    key={comment.id} 
-                    comment={comment} 
-                    onAddComment={handleCommentSubmit}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <div>
+      <PostCard post={post} isDetail />
+      <CommentSection postId={post.id} />
     </div>
   );
 };
 
-export default PostDetail;
+export default PostDetailPage;

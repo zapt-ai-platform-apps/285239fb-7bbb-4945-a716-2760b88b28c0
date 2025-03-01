@@ -2,8 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import * as Sentry from '@sentry/browser';
-import { BrowserRouter } from 'react-router-dom';
 
 // Extend the Window interface to include progressierAppRuntimeSettings
 declare global {
@@ -16,6 +14,7 @@ declare global {
     };
   }
 }
+import * as Sentry from '@sentry/browser';
 
 Sentry.init({
   dsn: import.meta.env.VITE_PUBLIC_SENTRY_DSN,
@@ -56,8 +55,6 @@ if (import.meta.env.VITE_PUBLIC_APP_ENV !== 'development') {
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <App />
   </React.StrictMode>
 );

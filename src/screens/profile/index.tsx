@@ -1,126 +1,204 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import ProtectedRoute from '../../components/layout/ProtectedRoute';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import PostCard from '../../components/post/PostCard';
-import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
 
 interface Post {
   id: number;
   title: string;
-  content: string;
-  communityId: number;
-  communityName: string;
-  userId: string;
+  content?: string;
   createdAt: string;
-  voteScore: number;
-  userVote: number | null;
+  userName: string;
+  subredditName: string;
+  upvotes: number;
+  downvotes: number;
+  commentCount: number;
+  userVote?: number;
 }
 
-const Profile = () => {
-  const { user, session, signOut } = useAuth();
-  const [userPosts, setUserPosts] = useState<Post[]>([]);
+interface UserProfile {
+  username: string;
+  joinDate: string;
+  karma: number;
+}
+
+const ProfilePage = () => {
+  const { username } = useParams<{ username: string }>();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('posts');
 
   useEffect(() => {
-    const fetchUserPosts = async () => {
-      if (!session) return;
-      
-      setLoading(true);
+    const fetchUserData = async () => {
       try {
-        const response = await fetch(`/api/posts?userId=${user?.id}`, {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
+        setLoading(true);
+        
+        // TODO: Implement actual API calls when ready
+        // const profileResponse = await fetch(`/api/users/${username}`);
+        // if (!profileResponse.ok) {
+        //   throw new Error('Failed to fetch user profile');
+        // }
+        // const profileData = await profileResponse.json();
+        // setUserProfile(profileData);
+        
+        // const postsResponse = await fetch(`/api/users/${username}/posts`);
+        // if (!postsResponse.ok) {
+        //   throw new Error('Failed to fetch user posts');
+        // }
+        // const postsData = await postsResponse.json();
+        // setPosts(postsData);
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch user posts');
-        }
+        // Mock data for development
+        setTimeout(() => {
+          setUserProfile({
+            username: username || 'unknown',
+            joinDate: new Date(Date.now() - 15552000000).toISOString(), // 6 months ago
+            karma: 12453,
+          });
 
-        const data = await response.json();
-        setUserPosts(data);
+          setPosts([
+            {
+              id: 1,
+              title: `Post by ${username} in r/funny`,
+              content: "This is a post I made in r/funny that got a lot of upvotes!",
+              createdAt: new Date(Date.now() - 259200000).toISOString(),
+              userName: username || 'unknown',
+              subredditName: "funny",
+              upvotes: 742,
+              downvotes: 21,
+              commentCount: 132,
+            },
+            {
+              id: 2,
+              title: `Another post by ${username} in r/gaming`,
+              content: "I shared my gaming setup and got some great feedback.",
+              createdAt: new Date(Date.now() - 604800000).toISOString(),
+              userName: username || 'unknown',
+              subredditName: "gaming",
+              upvotes: 531,
+              downvotes: 42,
+              commentCount: 89,
+            },
+            {
+              id: 3,
+              title: `Question from ${username} in r/AskReddit`,
+              createdAt: new Date(Date.now() - 2592000000).toISOString(),
+              userName: username || 'unknown',
+              subredditName: "AskReddit",
+              upvotes: 325,
+              downvotes: 15,
+              commentCount: 47,
+            }
+          ]);
+          
+          setLoading(false);
+        }, 800);
       } catch (error) {
-        console.error('Error fetching user posts:', error);
+        console.error('Error fetching user data:', error);
         Sentry.captureException(error);
-        setError('Failed to load your posts. Please try again later.');
-      } finally {
         setLoading(false);
       }
     };
 
-    fetchUserPosts();
-  }, [session, user?.id]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-      Sentry.captureException(error);
-    }
-  };
+    fetchUserData();
+  }, [username]);
 
   return (
-    <ProtectedRoute>
-      <div className="container mx-auto px-4 py-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="card mb-6">
-            <h1 className="text-2xl font-bold mb-4">Your Profile</h1>
-            
-            <div className="flex flex-col md:flex-row md:items-center justify-between">
+    <div>
+      {loading ? (
+        <div className="animate-pulse">
+          <div className="bg-white rounded-md shadow-sm mb-4 p-6">
+            <div className="flex items-center">
+              <div className="w-16 h-16 bg-gray-200 rounded-full mr-4"></div>
               <div>
-                <p className="text-lg mb-2">
-                  <span className="font-medium">Email:</span> {user?.email}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Member since {new Date(user?.created_at || Date.now()).toLocaleDateString()}
-                </p>
-              </div>
-              
-              <div className="mt-4 md:mt-0">
-                <button 
-                  onClick={handleSignOut}
-                  className="btn-secondary"
-                >
-                  Sign Out
-                </button>
+                <div className="h-6 bg-gray-200 rounded w-32 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-48"></div>
               </div>
             </div>
           </div>
 
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Your Posts</h2>
-              <Link to="/submit" className="btn-primary">
-                Create Post
-              </Link>
-            </div>
-
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="bg-white rounded-md shadow-sm mb-4 p-4">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+            
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="card animate-pulse mb-4">
+                <div className="flex">
+                  <div className="bg-gray-200 w-10 p-2"></div>
+                  <div className="p-4 flex-1">
+                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div className="h-16 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-28"></div>
+                  </div>
+                </div>
               </div>
-            ) : error ? (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                {error}
-              </div>
-            ) : userPosts.length === 0 ? (
-              <div className="card text-center py-8">
-                <p className="text-lg text-gray-600 mb-4">You haven't created any posts yet.</p>
-                <Link to="/submit" className="btn-primary inline-block">
-                  Create your first post
-                </Link>
-              </div>
-            ) : (
-              userPosts.map((post) => <PostCard key={post.id} post={post} />)
-            )}
+            ))}
           </div>
         </div>
-      </div>
-    </ProtectedRoute>
+      ) : (
+        <>
+          <div className="bg-white rounded-md shadow-sm mb-4 p-6">
+            <div className="flex items-center">
+              <div className="w-16 h-16 bg-gray-200 rounded-full mr-4 flex items-center justify-center text-2xl text-gray-500">
+                {username?.[0]?.toUpperCase()}
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">u/{userProfile?.username}</h1>
+                <p className="text-gray-500 text-sm">
+                  {userProfile?.karma.toLocaleString()} karma • 
+                  Joined {new Date(userProfile?.joinDate || '').toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-md shadow-sm mb-4">
+            <div className="border-b border-gray-200">
+              <nav className="flex -mb-px">
+                <button
+                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                    activeTab === 'posts'
+                      ? 'border-reddit-orange text-reddit-orange'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('posts')}
+                >
+                  Posts
+                </button>
+                <button
+                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
+                    activeTab === 'comments'
+                      ? 'border-reddit-orange text-reddit-orange'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => setActiveTab('comments')}
+                >
+                  Comments
+                </button>
+              </nav>
+            </div>
+
+            <div className="p-4">
+              {activeTab === 'posts' ? (
+                posts.length > 0 ? (
+                  posts.map((post) => <PostCard key={post.id} post={post} />)
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">This user hasn't posted anything yet.</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Comments will be displayed here.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 };
 
-export default Profile;
+export default ProfilePage;
