@@ -21,12 +21,23 @@ export const posts = pgTable('posts', {
   downvotes: integer('downvotes').default(0),
 });
 
-export const comments = pgTable('comments', {
+// Forward declare the comments type to avoid circular reference error
+type CommentsTable = ReturnType<typeof pgTable<"comments", {
+  id: ReturnType<typeof serial>;
+  content: ReturnType<typeof text>;
+  postId: ReturnType<typeof integer>;
+  userId: ReturnType<typeof uuid>;
+  parentId: ReturnType<typeof integer>;
+  createdAt: ReturnType<typeof timestamp>;
+  updatedAt: ReturnType<typeof timestamp>;
+}>>;
+
+export const comments: CommentsTable = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
   postId: integer('post_id').notNull().references(() => posts.id),
   userId: uuid('user_id').notNull(),
-  parentId: integer('parent_id').references(() => comments.id),
+  parentId: integer('parent_id').references((): ReturnType<typeof serial> => comments.id),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
