@@ -4,6 +4,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import HomePage from './screens/home';
 import SubredditPage from './screens/subreddit';
+import CommunityPage from './screens/community';
 import PostDetailPage from './screens/post';
 import CreatePostPage from './screens/submit';
 import ProfilePage from './screens/profile';
@@ -21,6 +22,7 @@ const App = () => {
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
               <Route path="/r/:subredditName" element={<SubredditPage />} />
+              <Route path="/community/:communityName" element={<CommunityPage />} />
               <Route path="/r/:subredditName/comments/:postId" element={<PostDetailPage />} />
               <Route path="/u/:username" element={<ProfilePage />} />
               <Route 

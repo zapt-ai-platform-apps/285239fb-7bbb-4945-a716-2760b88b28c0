@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import PostCard from '../../components/post/PostCard';
 import CommunityInfo from '../../components/community/CommunityInfo';
 import useAuth from '../../hooks/useAuth';
@@ -20,30 +20,37 @@ const CommunityPage = () => {
   const [community, setCommunity] = useState<Community | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCommunity = async () => {
+      if (!communityName) return;
+      
       setLoading(true);
+      setError(null);
+      
       try {
-        if (!communityName) {
-          throw new Error('Community name is required');
-        }
-
-        // Fetch community
-        const communityResponse = await fetch(`/api/communities?name=${communityName}`, {
+        console.log(`Fetching data for community: ${communityName}`);
+        
+        // Fetch communities to find the one with matching name
+        const communityResponse = await fetch(`/api/communities`, {
           headers: session ? {
-            Authorization: `Bearer ${session.access_token}`,
-          } : {},
+            Authorization: `Bearer ${session.access_token}`
+          } : {}
         });
 
         if (!communityResponse.ok) {
-          throw new Error('Failed to fetch community');
+          throw new Error(`Failed to fetch communities: ${communityResponse.status}`);
         }
 
-        const communitiesData = await communityResponse.json();
-        if (communitiesData.length === 0) {
-          throw new Error('Community not found');
+        let communitiesData;
+        try {
+          communitiesData = await communityResponse.json();
+          console.log(`Found ${communitiesData.length} communities`);
+        } catch (jsonError) {
+          console.error('JSON parsing error:', jsonError);
+          Sentry.captureException(jsonError);
+          throw new Error(`Failed to parse communities response as JSON. Received: ${await communityResponse.text()}`);
         }
 
         const foundCommunity = communitiesData.find(
@@ -51,7 +58,9 @@ const CommunityPage = () => {
         );
 
         if (!foundCommunity) {
-          throw new Error('Community not found');
+          setError(`Community "${communityName}" not found`);
+          setLoading(false);
+          return;
         }
 
         setCommunity(foundCommunity);
@@ -59,27 +68,36 @@ const CommunityPage = () => {
         // Fetch posts for this community
         const postsResponse = await fetch(`/api/posts?communityId=${foundCommunity.id}`, {
           headers: session ? {
-            Authorization: `Bearer ${session.access_token}`,
-          } : {},
+            Authorization: `Bearer ${session.access_token}`
+          } : {}
         });
 
         if (!postsResponse.ok) {
-          throw new Error('Failed to fetch posts');
+          throw new Error(`Failed to fetch posts: ${postsResponse.status}`);
         }
 
-        const postsData = await postsResponse.json();
+        let postsData;
+        try {
+          postsData = await postsResponse.json();
+          console.log(`Found ${postsData.length} posts for community`);
+        } catch (jsonError) {
+          console.error('JSON parsing error:', jsonError);
+          Sentry.captureException(jsonError);
+          throw new Error(`Failed to parse posts response as JSON. Received: ${await postsResponse.text()}`);
+        }
+        
         const formattedPosts = postsData.map((post: Post) => ({
           ...post,
           userName: post.userName || 'unknown',
           subredditName: communityName,
-          commentCount: 0,
-          userVote: post.userVote !== undefined ? post.userVote : 0
+          commentCount: post.commentCount || 0
         }));
+        
         setPosts(formattedPosts);
       } catch (error) {
         console.error('Error fetching community:', error);
         Sentry.captureException(error);
-        setError(error instanceof Error ? error.message : 'An error occurred');
+        setError(error instanceof Error ? error.message : 'An unexpected error occurred');
       } finally {
         setLoading(false);
       }
@@ -102,6 +120,7 @@ const CommunityPage = () => {
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
+        <Link to="/" className="btn-primary cursor-pointer">Return to Home</Link>
       </div>
     );
   }
@@ -110,7 +129,8 @@ const CommunityPage = () => {
     return (
       <div className="container mx-auto px-4 py-6">
         <div className="card text-center py-8">
-          <p className="text-lg text-gray-600">Community not found</p>
+          <p className="text-lg text-gray-600 mb-4">Community not found</p>
+          <Link to="/" className="btn-primary cursor-pointer">Return to Home</Link>
         </div>
       </div>
     );
@@ -126,6 +146,7 @@ const CommunityPage = () => {
           {posts.length === 0 ? (
             <div className="card text-center py-8">
               <p className="text-lg text-gray-600 mb-4">No posts in this community yet!</p>
+              <Link to="/submit" className="btn-primary cursor-pointer">Create the first post</Link>
             </div>
           ) : (
             posts.map((post) => (
@@ -135,7 +156,9 @@ const CommunityPage = () => {
                   ...post,
                   userName: post.userName || 'unknown',
                   subredditName: community.name,
-                  commentCount: post.commentCount || 0
+                  commentCount: post.commentCount || 0,
+                  upvotes: post.upvotes || 0,
+                  downvotes: post.downvotes || 0
                 }} 
               />
             ))
@@ -146,7 +169,7 @@ const CommunityPage = () => {
         <div className="md:w-1/3">
           <CommunityInfo community={community} />
 
-          <div className="card">
+          <div className="card p-4">
             <h2 className="text-lg font-bold mb-3">Community Rules</h2>
             <ol className="list-decimal pl-5 space-y-2">
               <li>Remember the human</li>
