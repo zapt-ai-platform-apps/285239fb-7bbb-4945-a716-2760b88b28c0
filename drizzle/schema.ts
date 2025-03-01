@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, uuid, integer, unique, check, PgTableWithColumns } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, uuid, integer, unique, check, PgTableWithColumns, PgTable } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const communities = pgTable('communities', {
@@ -21,7 +21,6 @@ export const posts = pgTable('posts', {
   downvotes: integer('downvotes').default(0),
 });
 
-// Fixed TS7022 by adding explicit type annotation
 export const comments: PgTableWithColumns<{
   name: 'comments';
   schema: undefined;
@@ -45,6 +44,12 @@ export const comments: PgTableWithColumns<{
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+type VoteConstraints = {
+  postVoteUnique: ReturnType<typeof unique>;
+  commentVoteUnique: ReturnType<typeof unique>;
+  postOrComment: ReturnType<typeof check>;
+};
+
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
   userId: uuid('user_id').notNull(),
@@ -53,7 +58,6 @@ export const votes = pgTable('votes', {
   value: integer('value').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => {
-  // Fixed TS7024 by adding explicit return type annotation
   return {
     postVoteUnique: unique().on(table.userId, table.postId),
     commentVoteUnique: unique().on(table.userId, table.commentId),
@@ -61,7 +65,7 @@ export const votes = pgTable('votes', {
       'post_or_comment', 
       sql`(post_id IS NULL AND comment_id IS NOT NULL) OR (post_id IS NOT NULL AND comment_id IS NULL)`
     )
-  } as const;
+  } as const satisfies VoteConstraints;
 });
 
 export const subreddits = pgTable('subreddits', {
