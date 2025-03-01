@@ -1,148 +1,86 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
-import * as Sentry from '@sentry/browser';
+import React from 'react';
+import { useForm } from 'react-hook-form';
 
-const CommunityForm = () => {
-  const { session } = useAuth();
-  const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+interface CommunityFormProps {
+  onSubmit: (data: FormData) => void;
+  isSubmitting: boolean;
+  initialData?: FormData;
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
+interface FormData {
+  name: string;
+  description?: string;
+}
 
-    setError('');
-    
-    if (!name.trim()) {
-      setError('Community name is required');
-      return;
+const CommunityForm: React.FC<CommunityFormProps> = ({ 
+  onSubmit, 
+  isSubmitting, 
+  initialData 
+}) => {
+  const { 
+    register, 
+    handleSubmit, 
+    formState: { errors } 
+  } = useForm<FormData>({
+    defaultValues: initialData || {
+      name: '',
+      description: ''
     }
-
-    // Validate name format
-    if (!/^[a-zA-Z0-9_]+$/.test(name)) {
-      setError('Community name can only contain letters, numbers, and underscores');
-      return;
-    }
-
-    if (name.length < 3) {
-      setError('Community name must be at least 3 characters');
-      return;
-    }
-
-    if (name.length > 21) {
-      setError('Community name must be less than 22 characters');
-      return;
-    }
-
-    if (!session?.access_token) {
-      setError('You must be logged in to create a community');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const response = await fetch('/api/communities', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          name,
-          description,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create community');
-      }
-
-      const data = await response.json();
-      // Redirect to the community
-      navigate(`/r/${data.name}`);
-    } catch (error) {
-      console.error('Error creating community:', error);
-      Sentry.captureException(error);
-      setError(error instanceof Error ? error.message : 'Failed to create community');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  });
 
   return (
-    <div className="card max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4">Create a community</h2>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-            Name
-          </label>
-          <div className="flex">
-            <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500">
-              r/
-            </span>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input-field rounded-l-none"
-              placeholder="community_name"
-              required
-              maxLength={21}
-            />
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          Community Name
+        </label>
+        <input
+          id="name"
+          type="text"
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm box-border"
+          placeholder="community_name"
+          {...register('name', { 
+            required: 'Community name is required',
+            pattern: {
+              value: /^[a-zA-Z0-9_]+$/,
+              message: 'Only letters, numbers, and underscores are allowed'
+            }
+          })}
+        />
+        {errors.name && (
+          <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+        )}
+      </div>
+
+      <div>
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+          Description (optional)
+        </label>
+        <textarea
+          id="description"
+          rows={4}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm box-border"
+          placeholder="Community description..."
+          {...register('description')}
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 cursor-pointer
+          ${isSubmitting ? 'opacity-75 cursor-not-allowed' : 'hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'}`}
+      >
+        {isSubmitting ? (
+          <div className="flex items-center">
+            <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin mr-2"></div>
+            Creating...
           </div>
-          <p className="mt-1 text-xs text-gray-500">
-            Community names must be 3-21 characters, and can only contain letters, numbers, and underscores.
-          </p>
-        </div>
-        
-        <div className="mb-4">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            Description (optional)
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="input-field"
-            placeholder="Description"
-            rows={4}
-          />
-        </div>
-        
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="btn-secondary mr-2 cursor-pointer"
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="btn-primary cursor-pointer"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Creating...' : 'Create Community'}
-          </button>
-        </div>
-      </form>
-    </div>
+        ) : (
+          'Create Community'
+        )}
+      </button>
+    </form>
   );
 };
 

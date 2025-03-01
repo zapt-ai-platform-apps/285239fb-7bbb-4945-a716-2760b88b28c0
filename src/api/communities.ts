@@ -1,9 +1,9 @@
 import { supabase } from '../supabaseClient';
 
 /**
- * Fetches posts, optionally filtered by community ID
+ * Fetches all communities
  */
-export async function getPosts(communityId?: number) {
+export async function getCommunities() {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -11,11 +11,7 @@ export async function getPosts(communityId?: number) {
       throw new Error('No active session');
     }
 
-    const url = communityId 
-      ? `/api/posts?communityId=${communityId}` 
-      : '/api/posts';
-
-    const response = await fetch(url, {
+    const response = await fetch('/api/communities', {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${session.access_token}`,
@@ -25,24 +21,20 @@ export async function getPosts(communityId?: number) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to fetch posts');
+      throw new Error(errorData.error || 'Failed to fetch communities');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error fetching posts:', error);
+    console.error('Error fetching communities:', error);
     throw error;
   }
 }
 
 /**
- * Creates a new post
+ * Creates a new community
  */
-export async function createPost(data: { 
-  title: string; 
-  content?: string; 
-  communityId: number 
-}) {
+export async function createCommunity(data: { name: string; description?: string }) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -50,7 +42,7 @@ export async function createPost(data: {
       throw new Error('No active session');
     }
 
-    const response = await fetch('/api/posts', {
+    const response = await fetch('/api/communities', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session.access_token}`,
@@ -61,12 +53,12 @@ export async function createPost(data: {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create post');
+      throw new Error(errorData.error || 'Failed to create community');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error creating post:', error);
+    console.error('Error creating community:', error);
     throw error;
   }
 }

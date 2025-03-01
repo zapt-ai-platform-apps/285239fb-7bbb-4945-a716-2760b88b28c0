@@ -1,188 +1,110 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import PostCard from '../../components/post/PostCard';
-import CommunityInfo from '../../components/community/CommunityInfo';
-import useAuth from '../../hooks/useAuth';
-import * as Sentry from '@sentry/browser';
-import { Post } from '../../types/post';
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import Layout from '@/components/layout/Layout';
+import CommunityInfo from '@/components/community/CommunityInfo';
+import PostCard from '@/components/post/PostCard';
+import { getCommunities } from '@/api/communities';
+import { getPosts } from '@/api/posts';
 
 interface Community {
   id: number;
   name: string;
-  description: string;
-  createdAt: string;
-  createdBy: string;
+  description?: string;
 }
 
-const CommunityPage = () => {
+interface Post {
+  id: number;
+  title: string;
+  content?: string;
+  communityId: number;
+  userId: string;
+  createdAt: string;
+  voteScore: number;
+  userVote: number | null;
+  communityName: string;
+}
+
+const CommunityScreen: React.FC = () => {
   const { communityName } = useParams<{ communityName: string }>();
-  const { session } = useAuth();
   const [community, setCommunity] = useState<Community | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCommunity = async () => {
-      if (!communityName) return;
-      
-      setLoading(true);
-      setError(null);
-      
+    const fetchCommunityAndPosts = async () => {
       try {
-        console.log(`Fetching data for community: ${communityName}`);
-        
-        // Fetch communities to find the one with matching name
-        const communityResponse = await fetch(`/api/communities`, {
-          headers: session ? {
-            Authorization: `Bearer ${session.access_token}`
-          } : {}
-        });
-
-        if (!communityResponse.ok) {
-          throw new Error(`Failed to fetch communities: ${communityResponse.status}`);
-        }
-
-        let communitiesData;
-        try {
-          communitiesData = await communityResponse.json();
-          console.log(`Found ${communitiesData.length} communities`);
-        } catch (jsonError) {
-          console.error('JSON parsing error:', jsonError);
-          Sentry.captureException(jsonError);
-          throw new Error(`Failed to parse communities response as JSON. Received: ${await communityResponse.text()}`);
-        }
-
-        const foundCommunity = communitiesData.find(
-          (c: Community) => c.name.toLowerCase() === communityName.toLowerCase()
+        // Get all communities to find the one with matching name
+        const communities = await getCommunities();
+        const matchedCommunity = communities.find(
+          (c: Community) => c.name === communityName
         );
-
-        if (!foundCommunity) {
-          setError(`Community "${communityName}" not found`);
-          setLoading(false);
+        
+        if (!matchedCommunity) {
+          setError('Community not found');
+          setIsLoading(false);
           return;
         }
-
-        setCommunity(foundCommunity);
-
-        // Fetch posts for this community
-        const postsResponse = await fetch(`/api/posts?communityId=${foundCommunity.id}`, {
-          headers: session ? {
-            Authorization: `Bearer ${session.access_token}`
-          } : {}
-        });
-
-        if (!postsResponse.ok) {
-          throw new Error(`Failed to fetch posts: ${postsResponse.status}`);
-        }
-
-        let postsData;
-        try {
-          postsData = await postsResponse.json();
-          console.log(`Found ${postsData.length} posts for community`);
-        } catch (jsonError) {
-          console.error('JSON parsing error:', jsonError);
-          Sentry.captureException(jsonError);
-          throw new Error(`Failed to parse posts response as JSON. Received: ${await postsResponse.text()}`);
-        }
         
-        const formattedPosts = postsData.map((post: Post) => ({
-          ...post,
-          userName: post.userName || 'unknown',
-          subredditName: communityName,
-          commentCount: post.commentCount || 0
-        }));
+        setCommunity(matchedCommunity);
         
-        setPosts(formattedPosts);
-      } catch (error) {
-        console.error('Error fetching community:', error);
-        Sentry.captureException(error);
-        setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+        // Get posts for this community
+        const communityPosts = await getPosts(matchedCommunity.id);
+        setPosts(communityPosts);
+      } catch (err) {
+        console.error('Error loading community:', err);
+        setError('Failed to load community data');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchCommunity();
-  }, [communityName, session]);
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-6 flex justify-center">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-        <Link to="/" className="btn-primary cursor-pointer">Return to Home</Link>
-      </div>
-    );
-  }
-
-  if (!community) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <div className="card text-center py-8">
-          <p className="text-lg text-gray-600 mb-4">Community not found</p>
-          <Link to="/" className="btn-primary cursor-pointer">Return to Home</Link>
-        </div>
-      </div>
-    );
-  }
+    if (communityName) {
+      fetchCommunityAndPosts();
+    }
+  }, [communityName]);
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Main content */}
-        <div className="md:w-2/3">
-          <h1 className="text-2xl font-bold mb-4">r/{community.name}</h1>
-
-          {posts.length === 0 ? (
-            <div className="card text-center py-8">
-              <p className="text-lg text-gray-600 mb-4">No posts in this community yet!</p>
-              <Link to="/submit" className="btn-primary cursor-pointer">Create the first post</Link>
-            </div>
-          ) : (
-            posts.map((post) => (
-              <PostCard 
-                key={post.id} 
-                post={{
-                  ...post,
-                  userName: post.userName || 'unknown',
-                  subredditName: community.name,
-                  commentCount: post.commentCount || 0,
-                  upvotes: post.upvotes || 0,
-                  downvotes: post.downvotes || 0
-                }} 
-              />
-            ))
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="md:w-1/3">
-          <CommunityInfo community={community} />
-
-          <div className="card p-4">
-            <h2 className="text-lg font-bold mb-3">Community Rules</h2>
-            <ol className="list-decimal pl-5 space-y-2">
-              <li>Remember the human</li>
-              <li>Behave like you would in real life</li>
-              <li>Look for the original source of content</li>
-              <li>Search for duplicates before posting</li>
-              <li>Read the community's rules</li>
-            </ol>
+    <Layout>
+      <div className="max-w-4xl mx-auto p-4">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-8 h-8 border-4 border-t-transparent border-indigo-500 rounded-full animate-spin"></div>
           </div>
-        </div>
+        ) : error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        ) : community ? (
+          <>
+            <CommunityInfo community={community} />
+            
+            <div className="mt-6">
+              <h2 className="text-xl font-semibold mb-4">Posts</h2>
+              
+              {posts.length === 0 ? (
+                <div className="bg-white shadow rounded-md p-6 text-center">
+                  <p className="text-gray-500">No posts in this community yet.</p>
+                  <a 
+                    href={`/submit?community=${community.id}`}
+                    className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 cursor-pointer"
+                  >
+                    Create Post
+                  </a>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {posts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        ) : null}
       </div>
-    </div>
+    </Layout>
   );
 };
 
-export default CommunityPage;
+export default CommunityScreen;
