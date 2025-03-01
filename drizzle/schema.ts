@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, uuid, integer, unique, check, PgTableWithColumns, PgTable } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, uuid, integer, unique, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const communities = pgTable('communities', {
@@ -21,20 +21,7 @@ export const posts = pgTable('posts', {
   downvotes: integer('downvotes').default(0),
 });
 
-export const comments: PgTableWithColumns<{
-  name: 'comments';
-  schema: undefined;
-  columns: {
-    id: ReturnType<typeof serial>;
-    content: ReturnType<typeof text>;
-    postId: ReturnType<typeof integer>;
-    userId: ReturnType<typeof uuid>;
-    parentId: ReturnType<typeof integer>;
-    createdAt: ReturnType<typeof timestamp>;
-    updatedAt: ReturnType<typeof timestamp>;
-  };
-  dialect: 'pg';
-}> = pgTable('comments', {
+export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
   postId: integer('post_id').notNull().references(() => posts.id),
@@ -43,12 +30,6 @@ export const comments: PgTableWithColumns<{
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
-
-type VoteConstraints = {
-  postVoteUnique: ReturnType<typeof unique>;
-  commentVoteUnique: ReturnType<typeof unique>;
-  postOrComment: ReturnType<typeof check>;
-};
 
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
@@ -59,13 +40,13 @@ export const votes = pgTable('votes', {
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => {
   return {
-    postVoteUnique: unique().on(table.userId, table.postId),
-    commentVoteUnique: unique().on(table.userId, table.commentId),
+    postVoteUnique: unique('post_vote_unique').on(table.userId, table.postId),
+    commentVoteUnique: unique('comment_vote_unique').on(table.userId, table.commentId),
     postOrComment: check(
       'post_or_comment', 
       sql`(post_id IS NULL AND comment_id IS NOT NULL) OR (post_id IS NOT NULL AND comment_id IS NULL)`
     )
-  } as const satisfies VoteConstraints;
+  };
 });
 
 export const subreddits = pgTable('subreddits', {
