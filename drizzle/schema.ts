@@ -21,13 +21,12 @@ export const posts = pgTable('posts', {
   downvotes: integer('downvotes').default(0),
 });
 
-// Explicitly type the comments table to avoid self-reference issues
 export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
   postId: integer('post_id').notNull().references(() => posts.id),
   userId: uuid('user_id').notNull(),
-  parentId: integer('parent_id').references((): ReturnType<typeof serial> => comments.id),
+  parentId: integer('parent_id').references(() => comments.id),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
