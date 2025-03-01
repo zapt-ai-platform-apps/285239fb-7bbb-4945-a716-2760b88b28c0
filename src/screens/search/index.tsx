@@ -43,7 +43,7 @@ const Search = () => {
         // Ensure all required properties are set with default values if undefined
         const formattedPosts = filteredPosts.map((post: Post) => ({
           ...post,
-          userName: post.userName ?? 'unknown', // Using nullish coalescing to ensure string type
+          userName: post.userName ?? 'unknown',
           subredditName: post.subredditName ?? 'unknown',
           commentCount: post.commentCount ?? 0
         }));

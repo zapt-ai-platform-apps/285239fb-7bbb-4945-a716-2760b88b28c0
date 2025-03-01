@@ -36,10 +36,13 @@ async function handleGetPosts(req: Request, res: Response) {
     if (sort === 'new') {
       result = await db.select().from(posts).orderBy(desc(posts.createdAt)).limit(50);
     } else if (sort === 'top') {
-      result = await db.select().from(posts).orderBy(desc(posts.upvotes)).limit(50);
+      // Use SQL expression for columns that might not be in the schema definition
+      result = await db.select().from(posts).orderBy(desc(sql`upvotes`)).limit(50);
     } else {
       // Default 'hot' sorting - a simplified algorithm based on votes and recency
-      result = await db.select().from(posts).orderBy(desc(posts.upvotes), desc(posts.createdAt)).limit(50);
+      result = await db.select().from(posts)
+        .orderBy(desc(sql`upvotes`), desc(posts.createdAt))
+        .limit(50);
     }
     
     return res.status(200).json(result);
@@ -82,10 +85,8 @@ async function handleCreatePost(req: Request, res: Response) {
     const newPost = await db.insert(posts).values({
       title,
       content: content || null,
-      subredditId,
+      communityId: subredditId, // Use communityId to match schema definition
       userId: user.id,
-      upvotes: 0,
-      downvotes: 0,
     }).returning();
     
     return res.status(201).json(newPost[0]);

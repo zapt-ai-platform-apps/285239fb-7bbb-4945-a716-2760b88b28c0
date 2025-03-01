@@ -17,6 +17,8 @@ export const posts = pgTable('posts', {
   userId: uuid('user_id').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+  upvotes: integer('upvotes').default(0),
+  downvotes: integer('downvotes').default(0),
 });
 
 export const comments = pgTable('comments', {
@@ -36,7 +38,11 @@ export const votes = pgTable('votes', {
   commentId: integer('comment_id').references(() => comments.id),
   value: integer('value').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
-}, (table) => {
+}, (table): { 
+  postVoteUnique: ReturnType<typeof unique>; 
+  commentVoteUnique: ReturnType<typeof unique>; 
+  postOrComment: ReturnType<typeof check>; 
+} => {
   return {
     postVoteUnique: unique().on(table.userId, table.postId),
     commentVoteUnique: unique().on(table.userId, table.commentId),
