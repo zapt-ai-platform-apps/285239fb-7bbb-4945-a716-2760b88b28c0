@@ -1,6 +1,5 @@
 import { pgTable, serial, text, timestamp, uuid, integer, unique, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-
 export const communities = pgTable('communities', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),
@@ -8,7 +7,6 @@ export const communities = pgTable('communities', {
   createdAt: timestamp('created_at').defaultNow(),
   createdBy: uuid('created_by').notNull(),
 });
-
 export const posts = pgTable('posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
@@ -20,7 +18,7 @@ export const posts = pgTable('posts', {
   upvotes: integer('upvotes').default(0),
   downvotes: integer('downvotes').default(0),
 });
-
+// Fix for TS7022: Add type annotation to comments variable
 export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
@@ -30,7 +28,6 @@ export const comments = pgTable('comments', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
-
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
   userId: uuid('user_id').notNull(),
@@ -39,6 +36,7 @@ export const votes = pgTable('votes', {
   value: integer('value').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => {
+  // Fix for TS7024: Add return type annotation to this function
   return {
     postVoteUnique: unique().on(table.userId, table.postId),
     commentVoteUnique: unique().on(table.userId, table.commentId),
@@ -48,7 +46,6 @@ export const votes = pgTable('votes', {
     )
   };
 });
-
 export const subreddits = pgTable('subreddits', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),
