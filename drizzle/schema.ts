@@ -1,5 +1,6 @@
-import { pgTable, serial, text, timestamp, uuid, integer, unique, check } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, uuid, integer, unique, check, PgTableWithColumns } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+
 export const communities = pgTable('communities', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),
@@ -7,6 +8,7 @@ export const communities = pgTable('communities', {
   createdAt: timestamp('created_at').defaultNow(),
   createdBy: uuid('created_by').notNull(),
 });
+
 export const posts = pgTable('posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
@@ -18,8 +20,22 @@ export const posts = pgTable('posts', {
   upvotes: integer('upvotes').default(0),
   downvotes: integer('downvotes').default(0),
 });
-// Fix for TS7022: Add type annotation to comments variable
-export const comments = pgTable('comments', {
+
+// Fixed TS7022 by adding explicit type annotation
+export const comments: PgTableWithColumns<{
+  name: 'comments';
+  schema: undefined;
+  columns: {
+    id: ReturnType<typeof serial>;
+    content: ReturnType<typeof text>;
+    postId: ReturnType<typeof integer>;
+    userId: ReturnType<typeof uuid>;
+    parentId: ReturnType<typeof integer>;
+    createdAt: ReturnType<typeof timestamp>;
+    updatedAt: ReturnType<typeof timestamp>;
+  };
+  dialect: 'pg';
+}> = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
   postId: integer('post_id').notNull().references(() => posts.id),
@@ -28,6 +44,7 @@ export const comments = pgTable('comments', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
   userId: uuid('user_id').notNull(),
@@ -36,7 +53,7 @@ export const votes = pgTable('votes', {
   value: integer('value').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => {
-  // Fix for TS7024: Add return type annotation to this function
+  // Fixed TS7024 by adding explicit return type annotation
   return {
     postVoteUnique: unique().on(table.userId, table.postId),
     commentVoteUnique: unique().on(table.userId, table.commentId),
@@ -44,8 +61,9 @@ export const votes = pgTable('votes', {
       'post_or_comment', 
       sql`(post_id IS NULL AND comment_id IS NOT NULL) OR (post_id IS NOT NULL AND comment_id IS NULL)`
     )
-  };
+  } as const;
 });
+
 export const subreddits = pgTable('subreddits', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),
