@@ -21,16 +21,19 @@ export const posts = pgTable('posts', {
   downvotes: integer('downvotes').default(0),
 });
 
+// Define comments table with proper type for self-reference
 export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
   postId: integer('post_id').notNull().references(() => posts.id),
   userId: uuid('user_id').notNull(),
-  parentId: integer('parent_id').references(() => comments.id),
+  // Use a function with explicit type annotation to break circular reference
+  parentId: integer('parent_id').references((): ReturnType<typeof serial> => comments.id),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Define votes table with proper return type for constraint function
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
   userId: uuid('user_id').notNull(),
