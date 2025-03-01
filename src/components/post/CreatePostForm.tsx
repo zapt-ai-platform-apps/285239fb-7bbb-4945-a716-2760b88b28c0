@@ -4,6 +4,11 @@ import { useForm } from 'react-hook-form';
 import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
 
+interface Community {
+  id: number;
+  name: string;
+}
+
 interface FormData {
   title: string;
   content: string;
@@ -15,15 +20,18 @@ const CreatePostForm = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [communities, setCommunities] = useState<Array<{ id: number, name: string }>>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
   const [isLoadingCommunities, setIsLoadingCommunities] = useState(true);
   
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>();
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<FormData>();
+  const selectedCommunityId = watch('communityId');
   
   useEffect(() => {
     const fetchCommunities = async () => {
       try {
         console.log('Fetching communities...');
+        setIsLoadingCommunities(true);
+        
         const response = await fetch('/api/communities', {
           headers: {
             Authorization: `Bearer ${session?.access_token}`,
@@ -37,6 +45,11 @@ const CreatePostForm = () => {
         const data = await response.json();
         console.log('Communities loaded:', data.length);
         setCommunities(data);
+        
+        // If there's only one community, pre-select it
+        if (data.length === 1) {
+          setValue('communityId', String(data[0].id));
+        }
       } catch (error) {
         console.error('Error fetching communities:', error);
         Sentry.captureException(error);
@@ -47,7 +60,7 @@ const CreatePostForm = () => {
     };
     
     fetchCommunities();
-  }, [session]);
+  }, [session, setValue]);
   
   const onSubmit = async (data: FormData) => {
     if (isSubmitting) return;
@@ -56,7 +69,7 @@ const CreatePostForm = () => {
     setError(null);
     
     try {
-      console.log('Submitting post to API...');
+      console.log('Submitting post to API...', data);
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
@@ -109,37 +122,55 @@ const CreatePostForm = () => {
   };
   
   if (isLoadingCommunities) {
-    return <div className="text-center py-4">Loading communities...</div>;
+    return (
+      <div className="flex justify-center items-center py-4">
+        <div className="w-8 h-8 border-4 border-t-transparent border-reddit-orange rounded-full animate-spin mr-2"></div>
+        <p>Loading communities...</p>
+      </div>
+    );
   }
   
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
           {error}
         </div>
       )}
       
-      <div className="mb-4">
-        <label htmlFor="communityId" className="block text-sm font-medium text-gray-700 mb-1">
-          Community
-        </label>
-        <select
-          id="communityId"
-          className="input-field"
-          {...register('communityId', { required: 'Please select a community' })}
-        >
-          <option value="">Select a community</option>
-          {communities.map((community) => (
-            <option key={community.id} value={community.id}>
-              r/{community.name}
-            </option>
-          ))}
-        </select>
-        {errors.communityId && (
-          <p className="text-red-600 text-sm mt-1">{errors.communityId.message}</p>
-        )}
-      </div>
+      {communities.length === 0 ? (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+          <p className="mb-2">You need to create or join a community before posting.</p>
+          <button
+            type="button"
+            className="btn-primary cursor-pointer"
+            onClick={() => navigate('/create-community')}
+          >
+            Create a Community
+          </button>
+        </div>
+      ) : (
+        <div className="mb-4">
+          <label htmlFor="communityId" className="block text-sm font-medium text-gray-700 mb-1">
+            Community
+          </label>
+          <select
+            id="communityId"
+            className="input-field cursor-pointer"
+            {...register('communityId', { required: 'Please select a community' })}
+          >
+            <option value="">Select a community</option>
+            {communities.map((community) => (
+              <option key={community.id} value={community.id}>
+                r/{community.name}
+              </option>
+            ))}
+          </select>
+          {errors.communityId && (
+            <p className="text-red-600 text-sm mt-1">{errors.communityId.message}</p>
+          )}
+        </div>
+      )}
       
       <div className="mb-4">
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -172,7 +203,7 @@ const CreatePostForm = () => {
       <button
         type="submit"
         className="btn-primary w-full cursor-pointer"
-        disabled={isSubmitting}
+        disabled={isSubmitting || communities.length === 0 || !selectedCommunityId}
       >
         {isSubmitting ? 'Posting...' : 'Post'}
       </button>

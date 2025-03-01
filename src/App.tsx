@@ -9,6 +9,7 @@ import CreatePostPage from './screens/submit';
 import ProfilePage from './screens/profile';
 import AuthPage from './screens/auth';
 import ZaptBadge from './components/ui/ZaptBadge';
+import CreateCommunityPage from './screens/create-community';
 
 const App = () => {
   return (
@@ -27,6 +28,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <CreatePostPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/create-community" 
+                element={
+                  <ProtectedRoute>
+                    <CreateCommunityPage />
                   </ProtectedRoute>
                 } 
               />
