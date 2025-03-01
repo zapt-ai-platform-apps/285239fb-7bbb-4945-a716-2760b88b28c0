@@ -26,14 +26,13 @@ export default async function handler(req, res) {
         communityName: communities.name
       })
       .from(posts)
-      .leftJoin(communities, eq(posts.communityId, communities.id))
-      .orderBy(desc(posts.createdAt));
+      .leftJoin(communities, eq(posts.communityId, communities.id));
       
       if (communityId) {
         query = query.where(eq(posts.communityId, parseInt(communityId)));
       }
       
-      const result = await query;
+      const result = await query.orderBy(desc(posts.createdAt));
       
       // Get votes for all posts
       const postIds = result.map(post => post.id);

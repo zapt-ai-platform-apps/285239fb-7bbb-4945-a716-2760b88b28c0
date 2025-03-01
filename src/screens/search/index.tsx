@@ -43,7 +43,7 @@ const Search = () => {
         // Ensure all required properties are set
         const formattedPosts = filteredPosts.map((post: Post) => ({
           ...post,
-          userName: post.userName || 'unknown',
+          userName: (post.userName || 'unknown') as string,
           subredditName: post.subredditName || 'unknown',
           commentCount: post.commentCount || 0
         }));
