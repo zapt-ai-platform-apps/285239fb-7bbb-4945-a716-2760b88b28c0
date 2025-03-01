@@ -1,5 +1,6 @@
 import { pgTable, serial, text, timestamp, uuid, integer, unique, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { PgTableWithColumns } from 'drizzle-orm/pg-core';
 
 export const communities = pgTable('communities', {
   id: serial('id').primaryKey(),
@@ -21,7 +22,8 @@ export const posts = pgTable('posts', {
   downvotes: integer('downvotes').default(0),
 });
 
-export const comments = pgTable('comments', {
+// Fix for TS7022: Add type annotation for the comments variable
+export const comments: PgTableWithColumns<any> = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
   postId: integer('post_id').notNull().references(() => posts.id),
@@ -39,6 +41,7 @@ export const votes = pgTable('votes', {
   value: integer('value').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => {
+  // Fix for TS7024: Add return type annotation for this function
   return {
     postVoteUnique: unique('post_vote_unique').on(table.userId, table.postId),
     commentVoteUnique: unique('comment_vote_unique').on(table.userId, table.commentId),
@@ -46,7 +49,7 @@ export const votes = pgTable('votes', {
       'post_or_comment', 
       sql`(post_id IS NULL AND comment_id IS NOT NULL) OR (post_id IS NOT NULL AND comment_id IS NULL)`
     )
-  };
+  } as const;
 });
 
 export const subreddits = pgTable('subreddits', {
