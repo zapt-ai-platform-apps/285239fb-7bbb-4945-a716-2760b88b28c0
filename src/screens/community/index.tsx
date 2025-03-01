@@ -4,19 +4,7 @@ import PostCard from '../../components/post/PostCard';
 import CommunityInfo from '../../components/community/CommunityInfo';
 import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
-
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  communityId: number;
-  communityName: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  voteScore: number;
-  userVote: number | null;
-}
+import { Post } from '../../types/post';
 
 interface Community {
   id: number;
@@ -80,7 +68,13 @@ const CommunityPage = () => {
         }
 
         const postsData = await postsResponse.json();
-        setPosts(postsData);
+        const formattedPosts = postsData.map((post: Post) => ({
+          ...post,
+          userName: post.userName || 'unknown',
+          subredditName: communityName,
+          commentCount: 0,
+        }));
+        setPosts(formattedPosts);
       } catch (error) {
         console.error('Error fetching community:', error);
         Sentry.captureException(error);
@@ -133,7 +127,17 @@ const CommunityPage = () => {
               <p className="text-lg text-gray-600 mb-4">No posts in this community yet!</p>
             </div>
           ) : (
-            posts.map((post) => <PostCard key={post.id} post={post} />)
+            posts.map((post) => (
+              <PostCard 
+                key={post.id} 
+                post={{
+                  ...post,
+                  userName: post.userName || 'unknown',
+                  subredditName: community.name,
+                  commentCount: post.commentCount || 0
+                }} 
+              />
+            ))
           )}
         </div>
 

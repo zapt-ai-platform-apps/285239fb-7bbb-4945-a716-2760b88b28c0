@@ -3,8 +3,9 @@ import postgres from 'postgres';
 import { posts, subreddits } from '../drizzle/schema.js';
 import { desc, eq } from 'drizzle-orm';
 import { authenticateUser, Sentry } from './_apiUtils.js';
+import type { Request, Response } from 'express';
 
-export default async function handler(req, res) {
+export default async function handler(req: Request, res: Response) {
   try {
     // Handle different HTTP methods
     switch (req.method) {
@@ -22,10 +23,10 @@ export default async function handler(req, res) {
   }
 }
 
-async function handleGetPosts(req, res) {
-  const sort = req.query.sort || 'hot';
+async function handleGetPosts(req: Request, res: Response) {
+  const sort = req.query.sort as string || 'hot';
   
-  const client = postgres(process.env.COCKROACH_DB_URL);
+  const client = postgres(process.env.COCKROACH_DB_URL || '');
   const db = drizzle(client);
   
   let query = db.select().from(posts);
@@ -37,7 +38,6 @@ async function handleGetPosts(req, res) {
     query = query.orderBy(desc(posts.upvotes));
   } else {
     // Default 'hot' sorting - a simplified algorithm based on votes and recency
-    // In a real app, you'd implement a more sophisticated algorithm
     query = query.orderBy(desc(posts.upvotes), desc(posts.createdAt));
   }
   
@@ -46,7 +46,7 @@ async function handleGetPosts(req, res) {
   return res.status(200).json(results);
 }
 
-async function handleCreatePost(req, res) {
+async function handleCreatePost(req: Request, res: Response) {
   try {
     const user = await authenticateUser(req);
     const { title, content, subredditName } = req.body;
@@ -55,11 +55,11 @@ async function handleCreatePost(req, res) {
       return res.status(400).json({ error: 'Title and subreddit are required' });
     }
     
-    const client = postgres(process.env.COCKROACH_DB_URL);
+    const client = postgres(process.env.COCKROACH_DB_URL || '');
     const db = drizzle(client);
     
     // Find or create the subreddit
-    let subredditId;
+    let subredditId: number;
     const existingSubreddit = await db.select().from(subreddits).where(eq(subreddits.name, subredditName)).limit(1);
     
     if (existingSubreddit.length > 0) {
@@ -77,9 +77,11 @@ async function handleCreatePost(req, res) {
     // Create the post
     const newPost = await db.insert(posts).values({
       title,
-      content,
+      content: content || null,
       subredditId,
       userId: user.id,
+      upvotes: 0,
+      downvotes: 0,
     }).returning();
     
     return res.status(201).json(newPost[0]);
@@ -87,7 +89,8 @@ async function handleCreatePost(req, res) {
     console.error('Error creating post:', error);
     Sentry.captureException(error);
     
-    if (error.message === 'Missing Authorization header' || error.message === 'Invalid token') {
+    if (error instanceof Error && 
+       (error.message === 'Missing Authorization header' || error.message === 'Invalid token')) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     

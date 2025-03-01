@@ -1,5 +1,6 @@
 import { initializeZapt } from '@zapt/zapt-js';
 import * as Sentry from "@sentry/node";
+import type { Request } from 'express';
 
 // Initialize Sentry
 Sentry.init({
@@ -13,9 +14,14 @@ Sentry.init({
   }
 });
 
-const { supabase } = initializeZapt(process.env.VITE_PUBLIC_APP_ID); 
+const appId = process.env.VITE_PUBLIC_APP_ID;
+if (!appId) {
+  throw new Error('VITE_PUBLIC_APP_ID environment variable is not defined');
+}
 
-export async function authenticateUser(req) {
+const { supabase } = initializeZapt(appId); 
+
+export async function authenticateUser(req: Request): Promise<any> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     throw new Error('Missing Authorization header');

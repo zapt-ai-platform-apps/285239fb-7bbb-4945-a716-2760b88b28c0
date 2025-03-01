@@ -3,19 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import PostCard from '../../components/post/PostCard';
 import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
-
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  communityId: number;
-  communityName: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
-  voteScore: number;
-  userVote: number | null;
-}
+import { Post } from '../../types/post';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -51,7 +39,16 @@ const Search = () => {
           post.title.toLowerCase().includes(query.toLowerCase()) || 
           (post.content && post.content.toLowerCase().includes(query.toLowerCase()))
         );
-        setPosts(filteredPosts);
+        
+        // Ensure all required properties are set
+        const formattedPosts = filteredPosts.map((post: Post) => ({
+          ...post,
+          userName: post.userName || 'unknown',
+          subredditName: post.subredditName || 'unknown',
+          commentCount: post.commentCount || 0
+        }));
+        
+        setPosts(formattedPosts);
       } catch (error) {
         console.error('Error searching posts:', error);
         Sentry.captureException(error);
@@ -82,7 +79,7 @@ const Search = () => {
         ) : posts.length === 0 ? (
           <div className="card text-center py-8">
             <p className="text-lg text-gray-600 mb-4">No results found for "{query}"</p>
-            <Link to="/" className="btn-primary inline-block">
+            <Link to="/" className="btn-primary inline-block cursor-pointer">
               Back to Home
             </Link>
           </div>

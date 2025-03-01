@@ -2,14 +2,15 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { subreddits } from '../drizzle/schema.js';
 import { authenticateUser, Sentry } from './_apiUtils.js';
+import type { Request, Response } from 'express';
 
-export default async function handler(req, res) {
+export default async function handler(req: Request, res: Response) {
   try {
     if (req.method !== 'GET') {
       return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const client = postgres(process.env.COCKROACH_DB_URL);
+    const client = postgres(process.env.COCKROACH_DB_URL || '');
     const db = drizzle(client);
 
     // Get all subreddits

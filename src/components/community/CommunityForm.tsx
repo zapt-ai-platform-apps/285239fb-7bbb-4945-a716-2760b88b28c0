@@ -38,6 +38,11 @@ const CommunityForm = () => {
       return;
     }
 
+    if (!session?.access_token) {
+      setError('You must be logged in to create a community');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -45,7 +50,7 @@ const CommunityForm = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           name,
@@ -94,7 +99,7 @@ const CommunityForm = () => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="input rounded-l-none"
+              className="input-field rounded-l-none"
               placeholder="community_name"
               required
               maxLength={21}
@@ -113,7 +118,7 @@ const CommunityForm = () => {
             id="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="input"
+            className="input-field"
             placeholder="Description"
             rows={4}
           />
@@ -123,14 +128,14 @@ const CommunityForm = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="btn-secondary mr-2"
+            className="btn-secondary mr-2 cursor-pointer"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="btn-primary"
+            className="btn-primary cursor-pointer"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Creating...' : 'Create Community'}
