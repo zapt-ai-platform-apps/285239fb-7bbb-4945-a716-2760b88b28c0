@@ -1,4 +1,3 @@
-import React from 'react';
 import { useForm } from 'react-hook-form';
 
 interface CommunityFormProps {
@@ -12,11 +11,11 @@ interface FormData {
   description?: string;
 }
 
-const CommunityForm: React.FC<CommunityFormProps> = ({ 
+const CommunityForm = ({ 
   onSubmit, 
   isSubmitting, 
   initialData 
-}) => {
+}: CommunityFormProps) => {
   const { 
     register, 
     handleSubmit, 

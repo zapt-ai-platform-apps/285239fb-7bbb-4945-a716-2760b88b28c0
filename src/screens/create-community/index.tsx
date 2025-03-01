@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CommunityForm from '@/components/community/CommunityForm';
-import Layout from '@/components/layout/Layout';
 import { createCommunity } from '@/api/communities';
 
 interface FormData {
@@ -9,7 +8,7 @@ interface FormData {
   description?: string;
 }
 
-const CreateCommunityScreen: React.FC = () => {
+const CreateCommunityScreen = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,20 +29,18 @@ const CreateCommunityScreen: React.FC = () => {
   };
 
   return (
-    <Layout>
-      <div className="max-w-2xl mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">Create a Community</h1>
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-        <CommunityForm 
-          onSubmit={handleSubmit} 
-          isSubmitting={isSubmitting} 
-        />
-      </div>
-    </Layout>
+    <div className="max-w-2xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-6">Create a Community</h1>
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      <CommunityForm 
+        onSubmit={handleSubmit} 
+        isSubmitting={isSubmitting} 
+      />
+    </div>
   );
 };
 
