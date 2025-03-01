@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { subreddits } from '../drizzle/schema.ts';
-import { authenticateUser, Sentry } from './_apiUtils.ts';
+import { subreddits } from '../../drizzle/schema';
+import { authenticateUser, Sentry } from './_apiUtils';
 import type { Request, Response } from 'express';
 
 export default async function handler(req: Request, res: Response) {

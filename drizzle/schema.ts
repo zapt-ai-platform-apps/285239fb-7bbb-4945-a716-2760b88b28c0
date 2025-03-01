@@ -1,4 +1,5 @@
-import { pgTable, serial, text, timestamp, uuid, integer, unique, foreignKey, check } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, uuid, integer, unique, foreignKey, check, PgTableWithColumns } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const subreddits = pgTable('subreddits', {
   id: serial('id').primaryKey(),
@@ -19,10 +20,23 @@ export const posts = pgTable('posts', {
   downvotes: integer('downvotes').default(0),
 });
 
-export const comments = pgTable('comments', {
+export const comments: PgTableWithColumns<{
+  name: string;
+  schema: string | undefined;
+  columns: {
+    id: { dataType: 'number'; notNull: true; hasDefault: true; };
+    content: { dataType: 'string'; notNull: true; hasDefault: false; };
+    postId: { dataType: 'number'; notNull: true; hasDefault: false; };
+    parentId: { dataType: 'number' | null; notNull: false; hasDefault: false; };
+    createdAt: { dataType: 'Date'; notNull: false; hasDefault: true; };
+    userId: { dataType: 'string'; notNull: true; hasDefault: false; };
+    upvotes: { dataType: 'number'; notNull: false; hasDefault: true; };
+    downvotes: { dataType: 'number'; notNull: false; hasDefault: true; };
+  }
+}> = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
-  postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }),
+  postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }).notNull(),
   parentId: integer('parent_id').references(() => comments.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at').defaultNow(),
   userId: uuid('user_id').notNull(),
@@ -41,8 +55,18 @@ export const votes = pgTable('votes', {
   return {
     postVoteUnique: unique().on(table.userId, table.postId),
     commentVoteUnique: unique().on(table.userId, table.commentId),
-    postOrComment: check('post_or_comment', 
-      `(post_id IS NULL AND comment_id IS NOT NULL) OR 
-       (post_id IS NOT NULL AND comment_id IS NULL)`)
+    postOrComment: check(
+      'post_or_comment', 
+      sql`(post_id IS NULL AND comment_id IS NOT NULL) OR (post_id IS NOT NULL AND comment_id IS NULL)`
+    )
   };
+});
+
+// Define communities table
+export const communities = pgTable('communities', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow(),
+  createdBy: uuid('created_by').notNull(),
 });
