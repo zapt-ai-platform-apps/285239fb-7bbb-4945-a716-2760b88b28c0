@@ -38,11 +38,7 @@ export const votes = pgTable('votes', {
   commentId: integer('comment_id').references(() => comments.id),
   value: integer('value').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
-}, (table): { 
-  postVoteUnique: ReturnType<typeof unique>; 
-  commentVoteUnique: ReturnType<typeof unique>; 
-  postOrComment: ReturnType<typeof check>; 
-} => {
+}, (table) => {
   return {
     postVoteUnique: unique().on(table.userId, table.postId),
     commentVoteUnique: unique().on(table.userId, table.commentId),
