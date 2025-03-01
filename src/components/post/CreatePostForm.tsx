@@ -1,174 +1,181 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../../context/AuthContext';
+import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
 
 interface FormData {
   title: string;
   content: string;
-  subreddit: string;
-}
-
-interface SubredditOption {
-  id: number;
-  name: string;
+  communityId: string;
 }
 
 const CreatePostForm = () => {
-  const { user } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [subreddits, setSubreddits] = useState<SubredditOption[]>([
-    { id: 1, name: 'funny' },
-    { id: 2, name: 'AskReddit' },
-    { id: 3, name: 'gaming' },
-    { id: 4, name: 'news' },
-    { id: 5, name: 'worldnews' },
-  ]);
-  const [createNewSubreddit, setCreateNewSubreddit] = useState(false);
-  const [newSubredditName, setNewSubredditName] = useState('');
-
+  const [error, setError] = useState<string | null>(null);
+  const [communities, setCommunities] = useState<Array<{ id: number, name: string }>>([]);
+  const [isLoadingCommunities, setIsLoadingCommunities] = useState(true);
+  
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>();
-
+  
+  useEffect(() => {
+    const fetchCommunities = async () => {
+      try {
+        console.log('Fetching communities...');
+        const response = await fetch('/api/communities', {
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch communities');
+        }
+        
+        const data = await response.json();
+        console.log('Communities loaded:', data.length);
+        setCommunities(data);
+      } catch (error) {
+        console.error('Error fetching communities:', error);
+        Sentry.captureException(error);
+        setError('Failed to load communities. Please try again.');
+      } finally {
+        setIsLoadingCommunities(false);
+      }
+    };
+    
+    fetchCommunities();
+  }, [session]);
+  
   const onSubmit = async (data: FormData) => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    setError(null);
+    
     try {
-      setIsSubmitting(true);
-      console.log('Submitting post:', data);
+      console.log('Submitting post to API...');
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          title: data.title,
+          content: data.content,
+          communityId: parseInt(data.communityId)
+        }),
+      });
       
-      let subredditName = data.subreddit;
-      
-      // Create a new subreddit if needed
-      if (createNewSubreddit && newSubredditName) {
-        // Here we would make an API call to create the subreddit
-        console.log('Creating new subreddit:', newSubredditName);
-        subredditName = newSubredditName;
+      // First check if the response is OK
+      if (!response.ok) {
+        // Try to get error message from response if it's JSON
+        let errorMessage = 'Failed to create post';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (jsonError) {
+          // If parsing JSON fails, use status text
+          errorMessage = `Failed to create post: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
       
-      // TODO: Implement actual API call
-      // const response = await fetch('/api/posts', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${user.token}`
-      //   },
-      //   body: JSON.stringify({
-      //     title: data.title,
-      //     content: data.content,
-      //     subreddit: subredditName,
-      //   })
-      // });
+      // Now try to parse the JSON response
+      let result;
+      try {
+        result = await response.json();
+        console.log('Post created successfully:', result);
+      } catch (jsonError) {
+        console.error('Error parsing response:', jsonError);
+        throw new Error('Received invalid response format from server');
+      }
       
-      // if (!response.ok) {
-      //   throw new Error('Failed to create post');
-      // }
+      // Get the community name
+      const community = communities.find(c => c.id === parseInt(data.communityId));
       
-      // For demo purposes, we'll just simulate a successful response
-      setTimeout(() => {
-        navigate(`/r/${subredditName}`);
-      }, 1000);
-      
+      // Successfully created post, redirect to it
+      navigate(`/r/${community?.name}/comments/${result.id}`);
     } catch (error) {
       console.error('Error creating post:', error);
       Sentry.captureException(error);
+      setError(error instanceof Error ? error.message : 'Failed to create post. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  
+  if (isLoadingCommunities) {
+    return <div className="text-center py-4">Loading communities...</div>;
+  }
+  
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <div>
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      
+      <div className="mb-4">
+        <label htmlFor="communityId" className="block text-sm font-medium text-gray-700 mb-1">
+          Community
+        </label>
+        <select
+          id="communityId"
+          className="input-field"
+          {...register('communityId', { required: 'Please select a community' })}
+        >
+          <option value="">Select a community</option>
+          {communities.map((community) => (
+            <option key={community.id} value={community.id}>
+              r/{community.name}
+            </option>
+          ))}
+        </select>
+        {errors.communityId && (
+          <p className="text-red-600 text-sm mt-1">{errors.communityId.message}</p>
+        )}
+      </div>
+      
+      <div className="mb-4">
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-          Title <span className="text-red-500">*</span>
+          Title
         </label>
         <input
           id="title"
           type="text"
-          className={`input-field ${errors.title ? 'border-red-500' : ''}`}
+          className="input-field"
+          placeholder="Title"
           {...register('title', { required: 'Title is required' })}
         />
-        {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title.message}</p>}
+        {errors.title && (
+          <p className="text-red-600 text-sm mt-1">{errors.title.message}</p>
+        )}
       </div>
-
-      <div>
+      
+      <div className="mb-4">
         <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
           Content
         </label>
         <textarea
           id="content"
-          rows={6}
-          className="input-field"
+          className="input-field min-h-[150px]"
+          placeholder="Text (optional)"
           {...register('content')}
-        ></textarea>
+        />
       </div>
-
-      {createNewSubreddit ? (
-        <div>
-          <label htmlFor="newSubreddit" className="block text-sm font-medium text-gray-700 mb-1">
-            New Subreddit Name <span className="text-red-500">*</span>
-          </label>
-          <div className="flex items-center">
-            <span className="text-gray-500 mr-1">r/</span>
-            <input
-              id="newSubreddit"
-              type="text"
-              className="input-field"
-              value={newSubredditName}
-              onChange={(e) => setNewSubredditName(e.target.value)}
-              required
-            />
-          </div>
-          <button
-            type="button"
-            className="mt-2 text-sm text-reddit-blue hover:underline"
-            onClick={() => setCreateNewSubreddit(false)}
-          >
-            Choose existing subreddit instead
-          </button>
-        </div>
-      ) : (
-        <div>
-          <label htmlFor="subreddit" className="block text-sm font-medium text-gray-700 mb-1">
-            Subreddit <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="subreddit"
-            className={`input-field ${errors.subreddit ? 'border-red-500' : ''}`}
-            {...register('subreddit', { required: 'Subreddit is required' })}
-          >
-            <option value="">Select a subreddit</option>
-            {subreddits.map((subreddit) => (
-              <option key={subreddit.id} value={subreddit.name}>
-                r/{subreddit.name}
-              </option>
-            ))}
-          </select>
-          {errors.subreddit && <p className="mt-1 text-sm text-red-500">{errors.subreddit.message}</p>}
-          <button
-            type="button"
-            className="mt-2 text-sm text-reddit-blue hover:underline"
-            onClick={() => setCreateNewSubreddit(true)}
-          >
-            Create a new subreddit
-          </button>
-        </div>
-      )}
-
-      <div className="pt-4">
-        <button
-          type="submit"
-          className="btn-primary w-full"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Posting...' : 'Post'}
-        </button>
-      </div>
+      
+      <button
+        type="submit"
+        className="btn-primary w-full cursor-pointer"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? 'Posting...' : 'Post'}
+      </button>
     </form>
   );
 };

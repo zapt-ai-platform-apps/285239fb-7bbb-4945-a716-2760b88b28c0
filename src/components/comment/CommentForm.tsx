@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useForm } from 'react-hook-form';
+import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
 
 interface CommentFormProps {
@@ -9,100 +10,113 @@ interface CommentFormProps {
   isReply?: boolean;
 }
 
-const CommentForm = ({ postId, parentId, onCommentAdded, isReply = false }: CommentFormProps) => {
-  const { user } = useAuth();
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+interface CommentFormData {
+  content: string;
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+const CommentForm = ({ postId, parentId, onCommentAdded, isReply = false }: CommentFormProps) => {
+  const { session, user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<CommentFormData>();
+  
+  const onSubmit = async (data: CommentFormData) => {
     if (!user) {
       window.location.href = '/auth';
       return;
     }
+
+    if (isSubmitting) return;
     
-    if (!content.trim()) return;
+    setIsSubmitting(true);
+    setError(null);
     
     try {
-      setIsSubmitting(true);
+      console.log('Submitting comment to API...');
+      const response = await fetch('/api/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          content: data.content,
+          postId,
+          parentId
+        })
+      });
       
-      // TODO: Implement actual API call
-      // const response = await fetch('/api/comments', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${user.token}`
-      //   },
-      //   body: JSON.stringify({
-      //     content,
-      //     postId,
-      //     parentId
-      //   })
-      // });
+      // Check if response is OK
+      if (!response.ok) {
+        // Try to get error message from response if it's JSON
+        let errorMessage = 'Failed to add comment';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (jsonError) {
+          // If parsing JSON fails, use status text
+          errorMessage = `Failed to add comment: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
       
-      // if (!response.ok) {
-      //   throw new Error('Failed to add comment');
-      // }
+      // Try to parse the JSON response
+      let newComment;
+      try {
+        newComment = await response.json();
+        console.log('Comment added successfully:', newComment);
+      } catch (jsonError) {
+        console.error('Error parsing response:', jsonError);
+        throw new Error('Received invalid response format from server');
+      }
       
-      // const data = await response.json();
-      
-      // For demo purposes, we'll simulate a successful response
-      const newComment = {
-        id: Math.floor(Math.random() * 10000),
-        content,
-        createdAt: new Date().toISOString(),
-        userName: user.user_metadata?.name || user.email?.split('@')[0] || 'user',
-        upvotes: 0,
-        downvotes: 0,
-        userVote: 0,
+      // Format the comment for display
+      const formattedComment = {
+        ...newComment,
+        userName: user.user_metadata?.full_name || user.email,
         replies: []
       };
       
-      // Add small delay to simulate API call
-      setTimeout(() => {
-        onCommentAdded(newComment);
-        setContent('');
-        setIsSubmitting(false);
-      }, 500);
-      
+      // Reset form and notify parent component
+      reset();
+      onCommentAdded(formattedComment);
     } catch (error) {
       console.error('Error adding comment:', error);
       Sentry.captureException(error);
+      setError(error instanceof Error ? error.message : 'Failed to add comment. Please try again.');
+    } finally {
       setIsSubmitting(false);
     }
   };
-
-  if (!user) {
-    return (
-      <div className="bg-gray-50 p-4 rounded-md text-center">
-        <p className="text-gray-700 mb-2">Log in or sign up to leave a comment</p>
-        <a 
-          href="/auth" 
-          className="btn-primary inline-block"
-        >
-          Log In / Sign Up
-        </a>
-      </div>
-    );
-  }
-
+  
   return (
-    <form onSubmit={handleSubmit} className="mb-4">
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
+          {error}
+        </div>
+      )}
+      
       <div className="mb-3">
         <textarea
-          className="input-field min-h-24"
+          className="input-field min-h-[100px]"
           placeholder={isReply ? "What are your thoughts on this comment?" : "What are your thoughts?"}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          required
-        ></textarea>
+          {...register('content', { 
+            required: 'Comment cannot be empty',
+            minLength: { value: 1, message: 'Comment cannot be empty' }
+          })}
+        />
+        {errors.content && (
+          <p className="text-red-600 text-sm mt-1">{errors.content.message}</p>
+        )}
       </div>
+      
       <div className="flex justify-end">
         <button
           type="submit"
-          className="btn-primary"
-          disabled={isSubmitting || !content.trim()}
+          className="btn-primary cursor-pointer"
+          disabled={isSubmitting}
         >
           {isSubmitting ? 'Posting...' : isReply ? 'Reply' : 'Comment'}
         </button>
