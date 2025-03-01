@@ -3,13 +3,13 @@ import { useSearchParams, Link } from 'react-router-dom';
 import PostCard from '../../components/post/PostCard';
 import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
-import { Post } from '../../types/post';
+import { Post, ExtendedPost } from '../../types/post';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const { session } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<ExtendedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -41,7 +41,7 @@ const Search = () => {
         );
         
         // Ensure all required properties are set with default values if undefined
-        const formattedPosts = filteredPosts.map((post: Post) => ({
+        const formattedPosts = filteredPosts.map((post: Post): ExtendedPost => ({
           ...post,
           userName: post.userName ?? 'unknown',
           subredditName: post.subredditName ?? 'unknown',
