@@ -1,7 +1,7 @@
-import { pgTable, serial, text, timestamp, uuid, integer, unique, foreignKey, check, PgTableWithColumns } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, uuid, integer, unique, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const subreddits = pgTable('subreddits', {
+export const communities = pgTable('communities', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),
   description: text('description'),
@@ -13,43 +13,28 @@ export const posts = pgTable('posts', {
   id: serial('id').primaryKey(),
   title: text('title').notNull(),
   content: text('content'),
-  subredditId: integer('subreddit_id').references(() => subreddits.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').defaultNow(),
+  communityId: integer('community_id').notNull().references(() => communities.id),
   userId: uuid('user_id').notNull(),
-  upvotes: integer('upvotes').default(0),
-  downvotes: integer('downvotes').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const comments: PgTableWithColumns<{
-  name: string;
-  schema: string | undefined;
-  columns: {
-    id: { dataType: 'number'; notNull: true; hasDefault: true; };
-    content: { dataType: 'string'; notNull: true; hasDefault: false; };
-    postId: { dataType: 'number'; notNull: true; hasDefault: false; };
-    parentId: { dataType: 'number' | null; notNull: false; hasDefault: false; };
-    createdAt: { dataType: 'Date'; notNull: false; hasDefault: true; };
-    userId: { dataType: 'string'; notNull: true; hasDefault: false; };
-    upvotes: { dataType: 'number'; notNull: false; hasDefault: true; };
-    downvotes: { dataType: 'number'; notNull: false; hasDefault: true; };
-  }
-}> = pgTable('comments', {
+export const comments = pgTable('comments', {
   id: serial('id').primaryKey(),
   content: text('content').notNull(),
-  postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }).notNull(),
-  parentId: integer('parent_id').references(() => comments.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').defaultNow(),
+  postId: integer('post_id').notNull().references(() => posts.id),
   userId: uuid('user_id').notNull(),
-  upvotes: integer('upvotes').default(0),
-  downvotes: integer('downvotes').default(0),
+  parentId: integer('parent_id').references(() => comments.id),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 export const votes = pgTable('votes', {
   id: serial('id').primaryKey(),
   userId: uuid('user_id').notNull(),
-  postId: integer('post_id').references(() => posts.id, { onDelete: 'cascade' }),
-  commentId: integer('comment_id').references(() => comments.id, { onDelete: 'cascade' }),
-  value: integer('value').notNull(), // 1 for upvote, -1 for downvote
+  postId: integer('post_id').references(() => posts.id),
+  commentId: integer('comment_id').references(() => comments.id),
+  value: integer('value').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 }, (table) => {
   return {
@@ -62,8 +47,8 @@ export const votes = pgTable('votes', {
   };
 });
 
-// Define communities table
-export const communities = pgTable('communities', {
+// Legacy tables for compatibility
+export const subreddits = pgTable('subreddits', {
   id: serial('id').primaryKey(),
   name: text('name').notNull().unique(),
   description: text('description'),

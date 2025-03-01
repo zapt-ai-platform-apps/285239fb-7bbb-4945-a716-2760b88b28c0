@@ -40,12 +40,12 @@ const Search = () => {
           (post.content && post.content.toLowerCase().includes(query.toLowerCase()))
         );
         
-        // Ensure all required properties are set
+        // Ensure all required properties are set with default values if undefined
         const formattedPosts = filteredPosts.map((post: Post) => ({
           ...post,
-          userName: post.userName || 'unknown',
-          subredditName: post.subredditName || 'unknown',
-          commentCount: post.commentCount || 0
+          userName: post.userName ?? 'unknown', // Using nullish coalescing to ensure string type
+          subredditName: post.subredditName ?? 'unknown',
+          commentCount: post.commentCount ?? 0
         }));
         
         setPosts(formattedPosts);
