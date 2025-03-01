@@ -6,7 +6,7 @@ interface CommunityInfoProps {
   community: {
     id: number;
     name: string;
-    description: string;
+    description: string; // Making sure this expects a string
     createdAt: string | Date;
     createdBy: string;
   };

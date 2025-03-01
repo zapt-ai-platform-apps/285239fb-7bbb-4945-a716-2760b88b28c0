@@ -8,7 +8,7 @@ import { getPosts } from '@/api/posts';
 interface Community {
   id: number;
   name: string;
-  description?: string;
+  description: string; // This needs to be a string, not optional
   createdAt: string;
   createdBy: string;
 }
@@ -21,7 +21,7 @@ interface Post {
   userId: string;
   createdAt: string;
   voteScore: number;
-  userVote: number | null;
+  userVote: number | undefined; // Changed from number | null to number | undefined
   communityName: string;
   userName: string;
   subredditName: string;
@@ -52,7 +52,13 @@ const CommunityScreen = () => {
           return;
         }
         
-        setCommunity(matchedCommunity);
+        // Ensure description is always a string
+        const communityWithStringDescription = {
+          ...matchedCommunity,
+          description: matchedCommunity.description || '' // Ensure description is a string
+        };
+        
+        setCommunity(communityWithStringDescription);
         
         // Get posts for this community
         const communityPosts = await getPosts(matchedCommunity.id);
@@ -62,7 +68,8 @@ const CommunityScreen = () => {
           subredditName: matchedCommunity.name,
           upvotes: post.upvotes || 0,
           downvotes: post.downvotes || 0,
-          commentCount: post.commentCount || 0
+          commentCount: post.commentCount || 0,
+          userVote: post.userVote === null ? undefined : post.userVote // Convert null to undefined
         })));
       } catch (err) {
         console.error('Error loading community:', err);

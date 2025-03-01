@@ -50,7 +50,7 @@ export function createCommunity(params: {
   
   return {
     name,
-    description: description || '',
+    description: description || '', // Ensure description is always a string, never undefined
     createdBy: userId,
     createdAt: new Date()
   };

@@ -13,7 +13,7 @@ export interface Post {
   upvotes: number;
   downvotes: number;
   commentCount?: number;
-  userVote?: number;
+  userVote?: number; // Changed from number | null to number | undefined
   voteScore?: number;
 }
 
