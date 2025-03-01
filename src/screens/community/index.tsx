@@ -73,6 +73,7 @@ const CommunityPage = () => {
           userName: post.userName || 'unknown',
           subredditName: communityName,
           commentCount: 0,
+          userVote: post.userVote === null ? undefined : post.userVote
         }));
         setPosts(formattedPosts);
       } catch (error) {

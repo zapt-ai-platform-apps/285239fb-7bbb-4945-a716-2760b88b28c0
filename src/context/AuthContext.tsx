@@ -12,7 +12,7 @@ interface User {
   };
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   session: any | null;
   user: User | null;
   loading: boolean;
@@ -20,7 +20,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
+export const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   loading: true,

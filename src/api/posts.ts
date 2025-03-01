@@ -1,8 +1,8 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { posts, subreddits } from '../drizzle/schema.js';
+import { posts, subreddits } from '../drizzle/schema.ts';
 import { desc, eq } from 'drizzle-orm';
-import { authenticateUser, Sentry } from './_apiUtils.js';
+import { authenticateUser, Sentry } from './_apiUtils.ts';
 import type { Request, Response } from 'express';
 
 export default async function handler(req: Request, res: Response) {
@@ -29,21 +29,26 @@ async function handleGetPosts(req: Request, res: Response) {
   const client = postgres(process.env.COCKROACH_DB_URL || '');
   const db = drizzle(client);
   
-  let query = db.select().from(posts);
-  
-  // Apply sorting
-  if (sort === 'new') {
-    query = query.orderBy(desc(posts.createdAt));
-  } else if (sort === 'top') {
-    query = query.orderBy(desc(posts.upvotes));
-  } else {
-    // Default 'hot' sorting - a simplified algorithm based on votes and recency
-    query = query.orderBy(desc(posts.upvotes), desc(posts.createdAt));
+  try {
+    let postsQuery = db.select().from(posts);
+    
+    // Apply sorting
+    if (sort === 'new') {
+      postsQuery = db.select().from(posts).orderBy(desc(posts.createdAt));
+    } else if (sort === 'top') {
+      postsQuery = db.select().from(posts).orderBy(desc(posts.upvotes));
+    } else {
+      // Default 'hot' sorting - a simplified algorithm based on votes and recency
+      postsQuery = db.select().from(posts).orderBy(desc(posts.upvotes), desc(posts.createdAt));
+    }
+    
+    const results = await postsQuery.limit(50);
+    return res.status(200).json(results);
+  } catch (error) {
+    console.error('Error getting posts:', error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: 'Failed to fetch posts' });
   }
-  
-  const results = await query.limit(50);
-  
-  return res.status(200).json(results);
 }
 
 async function handleCreatePost(req: Request, res: Response) {

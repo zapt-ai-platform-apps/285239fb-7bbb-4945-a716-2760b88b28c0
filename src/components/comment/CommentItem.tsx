@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
-import { useAuth } from '../../context/AuthContext';
+import useAuth from '../../hooks/useAuth';
 import CommentForm from './CommentForm';
 import * as Sentry from '@sentry/browser';
 
@@ -22,7 +22,7 @@ interface CommentItemProps {
 }
 
 const CommentItem = ({ comment }: CommentItemProps) => {
-  const { user } = useAuth();
+  const { session, user } = useAuth();
   const [isReplying, setIsReplying] = useState(false);
   const [showReplies, setShowReplies] = useState(true);
   const [votes, setVotes] = useState({
@@ -71,19 +71,19 @@ const CommentItem = ({ comment }: CommentItemProps) => {
       });
 
       // TODO: Implement actual API call
-      // const response = await fetch(`/api/comments/${comment.id}/vote`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'Authorization': `Bearer ${user.token}`
-      //   },
-      //   body: JSON.stringify({ value })
-      // });
+      const response = await fetch(`/api/comments/${comment.id}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ value })
+      });
       
-      // if (!response.ok) {
-      //   // Revert changes on error
-      //   throw new Error('Failed to update vote');
-      // }
+      if (!response.ok) {
+        // Revert changes on error
+        throw new Error('Failed to update vote');
+      }
       
     } catch (error) {
       console.error('Error voting on comment:', error);

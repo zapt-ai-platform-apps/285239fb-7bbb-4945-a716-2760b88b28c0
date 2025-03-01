@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
-import { useAuth } from '../../context/AuthContext';
+import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
 
 interface PostCardProps {
@@ -23,7 +23,7 @@ interface PostCardProps {
 }
 
 const PostCard = ({ post, isDetail = false }: PostCardProps) => {
-  const { user } = useAuth();
+  const { session, user } = useAuth();
   const [votes, setVotes] = useState({
     upvotes: post.upvotes,
     downvotes: post.downvotes,
@@ -73,7 +73,7 @@ const PostCard = ({ post, isDetail = false }: PostCardProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}` // Assuming you have an auth token
+          'Authorization': `Bearer ${session?.access_token}`
         },
         body: JSON.stringify({ value })
       });
