@@ -37,7 +37,7 @@ const CreatePostForm = () => {
         const communityName = communityNameMatch ? communityNameMatch[1] : null;
         
         if (communityName && communities.length > 0) {
-          const community = communities.find(c => c.name.toLowerCase() === communityName.toLowerCase());
+          const community = communities.find((c: Community) => c.name.toLowerCase() === communityName.toLowerCase());
           if (community) {
             setValue('communityId', String(community.id));
           }
@@ -80,7 +80,7 @@ const CreatePostForm = () => {
         const communityParam = params.get('community');
         if (communityParam) {
           const communityId = parseInt(communityParam, 10);
-          if (!isNaN(communityId) && data.some(c => c.id === communityId)) {
+          if (!isNaN(communityId) && data.some((c: Community) => c.id === communityId)) {
             setValue('communityId', communityParam);
           }
         }
@@ -105,7 +105,7 @@ const CreatePostForm = () => {
     try {
       // Validate community exists before submitting
       const communityId = parseInt(data.communityId);
-      const community = communities.find(c => c.id === communityId);
+      const community = communities.find((c: Community) => c.id === communityId);
       
       if (!community) {
         throw new Error('Community not found. Please select a valid community.');
