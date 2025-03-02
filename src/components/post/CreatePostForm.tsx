@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
@@ -18,6 +18,7 @@ interface FormData {
 const CreatePostForm = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [communities, setCommunities] = useState<Community[]>([]);
@@ -25,6 +26,29 @@ const CreatePostForm = () => {
   
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<FormData>();
   const selectedCommunityId = watch('communityId');
+  
+  // Try to extract community name from the previous URL path if coming from a subreddit page
+  useEffect(() => {
+    const extractCommunityFromReferrer = async () => {
+      const referrer = document.referrer;
+      // Check if there's a community name in the referrer or if we're coming from a subreddit page
+      if (referrer && referrer.includes('/r/')) {
+        const communityNameMatch = referrer.match(/\/r\/([^\/]+)/);
+        const communityName = communityNameMatch ? communityNameMatch[1] : null;
+        
+        if (communityName && communities.length > 0) {
+          const community = communities.find(c => c.name.toLowerCase() === communityName.toLowerCase());
+          if (community) {
+            setValue('communityId', String(community.id));
+          }
+        }
+      }
+    };
+    
+    if (communities.length > 0) {
+      extractCommunityFromReferrer();
+    }
+  }, [communities, setValue]);
   
   useEffect(() => {
     const fetchCommunities = async () => {
@@ -50,6 +74,16 @@ const CreatePostForm = () => {
         if (data.length === 1) {
           setValue('communityId', String(data[0].id));
         }
+        
+        // Check URL params for community selection
+        const params = new URLSearchParams(location.search);
+        const communityParam = params.get('community');
+        if (communityParam) {
+          const communityId = parseInt(communityParam, 10);
+          if (!isNaN(communityId) && data.some(c => c.id === communityId)) {
+            setValue('communityId', communityParam);
+          }
+        }
       } catch (error) {
         console.error('Error fetching communities:', error);
         Sentry.captureException(error);
@@ -60,7 +94,7 @@ const CreatePostForm = () => {
     };
     
     fetchCommunities();
-  }, [session, setValue]);
+  }, [session, setValue, location.search]);
   
   const onSubmit = async (data: FormData) => {
     if (isSubmitting) return;
@@ -69,6 +103,14 @@ const CreatePostForm = () => {
     setError(null);
     
     try {
+      // Validate community exists before submitting
+      const communityId = parseInt(data.communityId);
+      const community = communities.find(c => c.id === communityId);
+      
+      if (!community) {
+        throw new Error('Community not found. Please select a valid community.');
+      }
+      
       console.log('Submitting post to API...', data);
       const response = await fetch('/api/posts', {
         method: 'POST',
@@ -79,7 +121,7 @@ const CreatePostForm = () => {
         body: JSON.stringify({
           title: data.title,
           content: data.content,
-          communityId: parseInt(data.communityId)
+          communityId: communityId
         }),
       });
       
@@ -107,11 +149,8 @@ const CreatePostForm = () => {
         throw new Error('Received invalid response format from server');
       }
       
-      // Get the community name
-      const community = communities.find(c => c.id === parseInt(data.communityId));
-      
-      // Successfully created post, redirect to it
-      navigate(`/r/${community?.name}/comments/${result.id}`);
+      // Successfully created post, redirect to the community page
+      navigate(`/r/${community.name}`);
     } catch (error) {
       console.error('Error creating post:', error);
       Sentry.captureException(error);
