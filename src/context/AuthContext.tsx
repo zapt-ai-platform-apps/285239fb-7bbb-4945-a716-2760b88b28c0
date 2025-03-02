@@ -72,8 +72,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`Auth state changed: ${event}`);
-        setSession(session);
-        setUser(session?.user || null);
+        
+        if (event === 'SIGNED_OUT') {
+          // Explicitly clear user and session when signed out
+          setSession(null);
+          setUser(null);
+          console.log('User signed out successfully');
+        } else {
+          setSession(session);
+          setUser(session?.user || null);
+        }
         
         if (event === 'SIGNED_IN' && session?.user?.email) {
           try {
@@ -96,6 +104,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Explicitly clear user and session data after successful sign out
+      setUser(null);
+      setSession(null);
+      console.log('Sign out successful');
+      
+      // Force a page refresh to clear any cached state
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
       Sentry.captureException(error);

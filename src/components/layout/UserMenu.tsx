@@ -11,10 +11,15 @@ const UserMenu = () => {
   const userName = user?.user_metadata?.name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
   const handleSignOut = async () => {
+    if (isLoggingOut) return; // Prevent multiple clicks
+    
     try {
       setIsLoggingOut(true);
+      console.log('Signing out...');
       await signOut();
-    } finally {
+      // No need for navigation here as we're doing a full redirect in AuthContext
+    } catch (error) {
+      console.error('Error during sign out:', error);
       setIsLoggingOut(false);
     }
   };
