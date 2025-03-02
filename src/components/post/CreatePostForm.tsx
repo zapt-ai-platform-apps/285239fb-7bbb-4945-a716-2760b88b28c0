@@ -68,6 +68,7 @@ const CreatePostForm = () => {
         
         const data = await response.json();
         console.log('Communities loaded:', data.length);
+        console.log('Community data:', data);
         setCommunities(data);
         
         // If there's only one community, pre-select it
@@ -104,11 +105,31 @@ const CreatePostForm = () => {
     
     try {
       // Validate community exists before submitting
-      const communityId = parseInt(data.communityId);
+      const communityIdStr = data.communityId;
+      console.log('Submitting with communityId:', communityIdStr);
+      console.log('Available communities:', communities);
+      
+      if (!communityIdStr) {
+        setError('Please select a community');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const communityId = parseInt(communityIdStr, 10);
+      if (isNaN(communityId)) {
+        setError('Invalid community ID format');
+        setIsSubmitting(false);
+        return;
+      }
+      
       const community = communities.find((c: Community) => c.id === communityId);
       
       if (!community) {
-        throw new Error('Community not found. Please select a valid community.');
+        // Handle error without throwing
+        console.error(`Community with ID ${communityId} not found. Available communities:`, communities);
+        setError('Community not found. Please select a valid community.');
+        setIsSubmitting(false);
+        return;
       }
       
       console.log('Submitting post to API...', data);
