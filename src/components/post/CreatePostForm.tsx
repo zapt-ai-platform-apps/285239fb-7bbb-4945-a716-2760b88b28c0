@@ -5,7 +5,7 @@ import useAuth from '../../hooks/useAuth';
 import * as Sentry from '@sentry/browser';
 
 interface Community {
-  id: number;
+  id: number | string;
   name: string;
 }
 
@@ -81,7 +81,7 @@ const CreatePostForm = () => {
         const communityParam = params.get('community');
         if (communityParam) {
           const communityId = parseInt(communityParam, 10);
-          if (!isNaN(communityId) && data.some((c: Community) => c.id === communityId)) {
+          if (!isNaN(communityId) && data.some((c: Community) => Number(c.id) === communityId)) {
             setValue('communityId', communityParam);
           }
         }
@@ -124,14 +124,16 @@ const CreatePostForm = () => {
       
       // Extra debugging to see exactly what we're working with
       console.log('Parsed communityId as number:', communityId);
-      console.log('Community IDs in the list:', communities.map(c => `${c.id} (${typeof c.id})`));
+      const communityIdsAsStrings = communities.map(c => `${c.id} (${typeof c.id})`);
+      console.log('Community IDs in the list:', communityIdsAsStrings);
       
-      // Convert all IDs to numbers for reliable comparison
-      const community = communities.find((c: Community) => Number(c.id) === communityId);
+      // More robust comparison - convert both sides to strings for comparison
+      const community = communities.find((c: Community) => String(c.id) === String(communityId));
       
       if (!community) {
         // Handle error without throwing
-        console.error(`Community with ID ${communityId} not found. Available communities:`, communities);
+        console.error(`Community with ID ${communityId} not found. Available communities:`, 
+          communities.map(c => ({ id: c.id, type: typeof c.id, name: c.name })));
         setError('Community not found. Please select a valid community.');
         setIsSubmitting(false);
         return;
@@ -228,7 +230,7 @@ const CreatePostForm = () => {
           >
             <option value="">Select a community</option>
             {communities.map((community) => (
-              <option key={community.id} value={community.id}>
+              <option key={String(community.id)} value={String(community.id)}>
                 r/{community.name}
               </option>
             ))}
