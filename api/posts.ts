@@ -68,8 +68,17 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Community ID is required' });
       }
       
+      // Ensure communityId is treated as a number
+      const communityIdNum = typeof communityId === 'string' ? parseInt(communityId, 10) : communityId;
+      
+      // Log the community ID for debugging
+      console.log('Creating post with communityId:', communityId, 'type:', typeof communityId);
+      console.log('Converted communityId:', communityIdNum, 'type:', typeof communityIdNum);
+      
       // Check if community exists
-      const community = await db.select().from(communities).where(eq(communities.id, communityId));
+      const community = await db.select().from(communities).where(eq(communities.id, communityIdNum));
+      console.log('Found community:', community);
+      
       if (community.length === 0) {
         return res.status(404).json({ error: 'Community not found' });
       }
@@ -78,7 +87,7 @@ export default async function handler(req, res) {
         .values({
           title,
           content,
-          communityId,
+          communityId: communityIdNum,
           userId: user.id
         })
         .returning();

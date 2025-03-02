@@ -122,7 +122,12 @@ const CreatePostForm = () => {
         return;
       }
       
-      const community = communities.find((c: Community) => c.id === communityId);
+      // Extra debugging to see exactly what we're working with
+      console.log('Parsed communityId as number:', communityId);
+      console.log('Community IDs in the list:', communities.map(c => `${c.id} (${typeof c.id})`));
+      
+      // Convert all IDs to numbers for reliable comparison
+      const community = communities.find((c: Community) => Number(c.id) === communityId);
       
       if (!community) {
         // Handle error without throwing
@@ -132,7 +137,9 @@ const CreatePostForm = () => {
         return;
       }
       
+      console.log('Found matching community:', community);
       console.log('Submitting post to API...', data);
+      
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
